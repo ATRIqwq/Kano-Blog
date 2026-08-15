@@ -32,18 +32,18 @@ jobs:
       - name: Copy admin app into public
         run: cp -r admin public/admin
 
-      # 部署凭据校验：PAGES_TOKEN 缺失时给出明确提示（避免晦涩的 git exit 128）
-      - name: Verify PAGES_TOKEN
+      # 部署凭据校验：ACTIONS_DEPLOY_KEY 缺失时给出明确提示（避免晦涩的 git exit 128）
+      - name: Verify DEPLOY_KEY
         run: |
-          if [ -z "${{ secrets.PAGES_TOKEN }}" ]; then
-            echo "::error::PAGES_TOKEN 未配置！请到 Kano-Blog 仓库 Settings → Secrets and variables → Actions 添加 PAGES_TOKEN（一个拥有 ATRIqwq/ATRIqwq.github.io 仓库 Contents 写权限的 PAT），然后重新 Run workflow。"
+          if [ -z "${{ secrets.ACTIONS_DEPLOY_KEY }}" ]; then
+            echo "::error::ACTIONS_DEPLOY_KEY 未配置！请到 Kano-Blog 仓库 Settings → Secrets and variables → Actions 添加 ACTIONS_DEPLOY_KEY（粘贴私钥全文），并在 ATRIqwq/ATRIqwq.github.io 的 Settings → Deploy keys 添加对应公钥（勾选 Allow write access），然后重新 Run workflow。"
             exit 1
           fi
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
-          personal_token: ${{ secrets.PAGES_TOKEN }}
+          deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
           external_repository: ATRIqwq/ATRIqwq.github.io   # 改为你的 Pages 仓库
           publish_branch: main
           publish_dir: ./public
