@@ -472,8 +472,11 @@
       toast('⬆️ 上传中…')
       let up
       try {
-        // 签名时 Content-Type 为空，此处不得携带 Content-Type 头
-        up = await fetch(data.uploadUrl, { method: 'PUT', body: blob })
+        // 上传请求的 Content-Type 必须与 Worker 签名时使用的值一致（blob.type，如 image/webp），
+        // 否则 OSS 验签返回 SignatureDoesNotMatch
+        const headers = {}
+        if (blob.type) headers['Content-Type'] = blob.type
+        up = await fetch(data.uploadUrl, { method: 'PUT', body: blob, headers })
       } catch (e) {
         throw new Error('OSS 直传失败：请检查 bucket 的跨域设置 CORS（操作单 B-2）：' + (e && e.message))
       }

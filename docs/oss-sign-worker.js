@@ -34,7 +34,7 @@ export default {
         if (missing.length) {
           return cors(json({ error: '缺少环境变量: ' + missing.join(', ') + '（请检查变量名拼写，并在 Production 环境下配置）' }, 500))
         }
-        const { name } = await request.json()
+        const { name, type } = await request.json()
         const ext = (name && name.includes('.') ? name.split('.').pop() : 'webp').toLowerCase()
         const ALLOW = ['jpg', 'jpeg', 'png', 'webp', 'gif']
         if (!ALLOW.includes(ext)) {
@@ -42,13 +42,16 @@ export default {
         }
 
         // 生成唯一对象名：{OSS_DIR}/时间戳-随机串.ext
-        // OSS_DIR 即环境变量值，例如 acs:oss:*:*:kano-img-bed/*/时间戳-随机.webp
+        // OSS_DIR 即环境变量值，例如 cover/时间戳-随机.webp
         const object = `${env.OSS_DIR}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
         const expires = Math.floor(Date.now() / 1000) + EXPIRES
         const resource = `/${env.OSS_BUCKET}/${object}`
 
-        // OSS V1 URL 签名（PUT、无 Content-Type/Content-MD5）
-        const stringToSign = `PUT\n\n\n${expires}\n${resource}`
+        // OSS V1 URL 签名（Content-MD5 为空）。
+        // Content-Type 取前端上传时实际发送的值（如 image/webp），必须与上传请求头一致，
+        // 否则 OSS 验签返回 SignatureDoesNotMatch。
+        const contentType = type && typeof type === 'string' ? type : ''
+        const stringToSign = `PUT\n\n${contentType}\n${expires}\n${resource}`
         const signature = await hmacSha1(env.OSS_AK_SECRET, stringToSign)
 
         const uploadUrl =
