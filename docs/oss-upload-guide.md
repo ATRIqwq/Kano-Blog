@@ -46,6 +46,8 @@
 
 8. 确定 → 回到"添加权限"页面选择该策略 → 确定
 
+> ℹ️ 若你的策略用的是整个 bucket（`"Resource": "acs:oss:*:*:kano-img-bed/*"`）**同样兼容本功能**（允许上传到 `cover/` 路径），只是授权范围更大。最小权限写法 `.../cover/*` 仅为更安全，非必需。
+
 ✅ **验证**：用户 `blog-uploader` 的权限列表里能看到 `blog-upload-only`；你已保存好 AccessKeyId/Secret（后面步骤 C 要用）。
 
 > 🚫 不要用主账号 AccessKey。子账号密钥泄露也只影响"上传图片"，不影响账号其他资源。
