@@ -37,7 +37,8 @@
 
   // ===== 路由 =====
   function route() {
-    const h = (location.hash || '#/list').replace(/^#\//, '')
+    const raw = (location.hash || '#/list').replace(/^#\//, '')
+    const h = raw.split('?')[0]   // 去掉 query 参数，如 #/editor?path=xxx → editor
     if (!state.authed) { showView('login'); return }
     showView('main')
     if (h === 'editor') renderEditor()
@@ -119,6 +120,35 @@
     state.catsMap = catsMap
   }
 
+  // ===== 自定义分类/标签池（localStorage）=====
+  // Hexo 中分类/标签是文章的聚合属性；"新增"通过待用池实现：
+  // 新分类先加入池中供编辑器自动补全，被文章使用后才真正出现在站点
+  function getCustom(key) {
+    try { return JSON.parse(localStorage.getItem(key) || '[]') } catch (e) { return [] }
+  }
+  function addCustom(key, name) {
+    const list = getCustom(key)
+    if (!list.includes(name)) { list.push(name); localStorage.setItem(key, JSON.stringify(list)) }
+  }
+  function removeCustom(key, name) {
+    localStorage.setItem(key, JSON.stringify(getCustom(key).filter(x => x !== name)))
+  }
+
+  function addMeta(type) {
+    const storeKey = type === 'tags' ? 'admin_custom_tags' : 'admin_custom_categories'
+    const label = type === 'tags' ? '标签' : '分类'
+    const input = prompt(`新增${label}名称：`)
+    if (input == null) return
+    const name = input.trim()
+    if (!name) return toast('名称不能为空', false)
+    const pool = type === 'tags' ? state.tagsMap : state.catsMap
+    if (pool[name]) return toast(`「${name}」已存在`, false)
+    if (getCustom(storeKey).includes(name)) return toast(`「${name}」已在待用列表`, false)
+    addCustom(storeKey, name)
+    toast(`已添加待用${label}「${name}」：新建文章并选择它后，${label}即会出现在站点`)
+    type === 'tags' ? renderTags() : renderCategories()
+  }
+
   // ===== 文章列表 =====
   function renderList() {
     const f = state.filter
@@ -173,6 +203,8 @@
     const isNew = !post
     const tagsVal = post ? post.tags.join(', ') : ''
     const catsVal = post ? post.categories.join(', ') : ''
+    const allCats = Array.from(new Set([...Object.keys(state.catsMap), ...getCustom('admin_custom_categories')]))
+    const allTags = Array.from(new Set([...Object.keys(state.tagsMap), ...getCustom('admin_custom_tags')]))
 
     $('#page-content').innerHTML = `
       <div class="edit-wrap">
@@ -192,9 +224,9 @@
               <div class="field"><label>日期</label><input id="f-date" value="${esc(d.date || todayStr())}"></div>
               <div class="field"><label>分类</label><input id="f-categories" list="cat-list" value="${esc(catsVal)}" placeholder="逗号分隔 / 可新建"></div>
             </div>
-            <datalist id="cat-list">${Object.keys(state.catsMap).map(c => `<option value="${esc(c)}">`).join('')}</datalist>
+            <datalist id="cat-list">${allCats.map(c => `<option value="${esc(c)}">`).join('')}</datalist>
             <div class="field"><label>标签（逗号分隔，可新建）</label><input id="f-tags" list="tag-list" value="${esc(tagsVal)}" placeholder="如 Java, Session"></div>
-            <datalist id="tag-list">${Object.keys(state.tagsMap).map(t => `<option value="${esc(t)}">`).join('')}</datalist>
+            <datalist id="tag-list">${allTags.map(t => `<option value="${esc(t)}">`).join('')}</datalist>
             <div class="field"><label>封面图 URL</label><input id="f-cover" value="${esc(d.cover || '')}"></div>
             <div class="field"><label>摘要 description</label><textarea id="f-description" rows="2">${esc(d.description || '')}</textarea></div>
             <h3>主题扩展</h3>
@@ -276,11 +308,17 @@
 
   // ===== 标签 / 分类 =====
   function renderTags() {
-    const list = Object.entries(state.tagsMap).sort((a, b) => b[1].count - a[1].count)
+    const custom = getCustom('admin_custom_tags')
+    const list = Object.entries(state.tagsMap)
+    custom.forEach(c => { if (!state.tagsMap[c]) list.push([c, { count: 0, posts: [] }]) })
+    list.sort((a, b) => b[1].count - a[1].count)
     renderMetaPage('tags', list, '标签')
   }
   function renderCategories() {
-    const list = Object.entries(state.catsMap).sort((a, b) => b[1].count - a[1].count)
+    const custom = getCustom('admin_custom_categories')
+    const list = Object.entries(state.catsMap)
+    custom.forEach(c => { if (!state.catsMap[c]) list.push([c, { count: 0, posts: [] }]) })
+    list.sort((a, b) => b[1].count - a[1].count)
     renderMetaPage('categories', list, '分类')
   }
   function renderMetaPage(type, list, label) {
@@ -291,6 +329,7 @@
       </div>
       <div class="toolbar">
         <div class="search"><input id="meta-search" placeholder="搜索${label}…"></div>
+        <button class="btn primary sm" data-act="meta-add" data-type="${type}">＋ 新增${label}</button>
         <button class="btn ghost sm" data-act="back">‹ 返回文章列表</button>
       </div>
       <div class="card table-card">
@@ -299,8 +338,8 @@
           <tbody>${list.map(([name, v]) => `
             <tr>
               <td><span class="tag-chip meta-name">${esc(name)}</span></td>
-              <td>${v.count}</td>
-              <td class="muted small">${esc(v.posts.join('、').slice(0, 60))}</td>
+              <td>${v.count === 0 ? '<span class="badge draft">待使用</span>' : v.count}</td>
+              <td class="muted small">${v.count === 0 ? '（暂无文章使用，已在待用列表）' : esc(v.posts.join('、').slice(0, 60))}</td>
               <td class="ops">
                 <button class="icon-btn" title="重命名" data-act="meta-rename" data-type="${type}" data-name="${esc(name)}">✏️</button>
                 <button class="icon-btn del" title="删除" data-act="meta-delete" data-type="${type}" data-name="${esc(name)}">🗑️</button>
@@ -321,29 +360,58 @@
   /** 重命名 / 删除标签或分类：遍历文章批量修改 → 一次 commit */
   async function renameMeta(type, oldName) {
     const key = type === 'tags' ? 'tags' : 'categories'
+    const storeKey = type === 'tags' ? 'admin_custom_tags' : 'admin_custom_categories'
+    const label = type === 'tags' ? '标签' : '分类'
     const newName = prompt(`将「${oldName}」重命名为：`, oldName)
     if (newName == null || newName.trim() === '' || newName.trim() === oldName) return
+    const finalName = newName.trim()
     const changes = []
     state.posts.forEach(p => {
       const arr = FM.toArray(p.data[key])
       const idx = arr.indexOf(oldName)
       if (idx !== -1) {
-        arr[idx] = newName.trim()
+        arr[idx] = finalName
         p.data[key] = FM.fromArray(arr)
         changes.push({ path: p.path, content: FM.build(p.data, p.content) })
       }
     })
-    if (!changes.length) return toast('未找到包含该' + (key === 'tags' ? '标签' : '分类') + '的文章', false)
+    // 无文章使用：仅同步待用池
+    if (!changes.length) {
+      if (getCustom(storeKey).includes(oldName)) {
+        removeCustom(storeKey, oldName)
+        addCustom(storeKey, finalName)
+        toast(`待用${label}已由「${oldName}」改为「${finalName}」`)
+        type === 'tags' ? renderTags() : renderCategories()
+      } else {
+        toast(`没有文章使用「${oldName}」，无需重命名`, false)
+      }
+      return
+    }
     if (!confirm(`将影响 ${changes.length} 篇文章，确认一次性提交修改？`)) return
     try {
-      await API.commitChanges(changes, `rename ${key.slice(0, -1)}: ${oldName} → ${newName.trim()}`)
+      await API.commitChanges(changes, `rename ${key.slice(0, -1)}: ${oldName} → ${finalName}`)
+      removeCustom(storeKey, oldName)
+      addCustom(storeKey, finalName)
       toast('✅ 重命名已提交，站点 1–3 分钟内自动更新')
       await loadAll(); route()
     } catch (e) { toast('操作失败：' + e.message, false) }
   }
   async function deleteMeta(type, name) {
     const key = type === 'tags' ? 'tags' : 'categories'
+    const storeKey = type === 'tags' ? 'admin_custom_tags' : 'admin_custom_categories'
+    const label = type === 'tags' ? '标签' : '分类'
     const affected = state.posts.filter(p => FM.toArray(p.data[key]).includes(name))
+    // 无文章使用：仅从待用池移除（若有）
+    if (!affected.length) {
+      if (getCustom(storeKey).includes(name)) {
+        removeCustom(storeKey, name)
+        toast(`已从待用列表移除「${name}」`)
+        type === 'tags' ? renderTags() : renderCategories()
+      } else {
+        toast(`没有文章使用「${name}」，无需删除`, false)
+      }
+      return
+    }
     if (!confirm(`将从 ${affected.length} 篇文章中移除「${name}」，确认提交？`)) return
     const changes = affected.map(p => {
       const arr = FM.toArray(p.data[key]).filter(x => x !== name)
@@ -352,6 +420,7 @@
     })
     try {
       await API.commitChanges(changes, `remove ${key.slice(0, -1)}: ${name}`)
+      removeCustom(storeKey, name)
       toast('✅ 已移除，站点 1–3 分钟内自动更新')
       await loadAll(); route()
     } catch (e) { toast('操作失败：' + e.message, false) }
@@ -405,6 +474,7 @@
     else if (act === 'delete') deleteArticle(btn.dataset.path)
     else if (act === 'save') saveArticle(btn.dataset.draft === '1')
     else if (act === 'save-publish') saveArticle(false)
+    else if (act === 'meta-add') addMeta(btn.dataset.type)
     else if (act === 'meta-rename') renameMeta(btn.dataset.type, btn.dataset.name)
     else if (act === 'meta-delete') deleteMeta(btn.dataset.type, btn.dataset.name)
   })
