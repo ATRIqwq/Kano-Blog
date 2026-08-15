@@ -10,3 +10,5 @@ public/
 themes/butterfly/.git
 # package-lock.json 需入库：GitHub Actions 使用 npm ci 依赖它
 dsh-usage/
+
+.tmp-deploy-key/
