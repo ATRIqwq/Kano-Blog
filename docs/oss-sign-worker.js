@@ -24,7 +24,7 @@ const EXPIRES = 300 // 签名有效期（秒）
 
 // 上传目录前缀（写死在代码里，避免误配环境变量）。
 // 如需改目录，只需改这里（如 'uploads'），并同步修改阿里云 RAM 策略的 Resource。
-const OSS_DIR = 'cover'
+// const OSS_DIR = 'cover'
 
 export default {
   async fetch(request, env) {
