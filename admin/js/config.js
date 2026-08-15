@@ -8,6 +8,6 @@ window.ADMIN_CONFIG = {
   branch: 'main',              // 默认分支
   postsDir: 'source/_posts',   // 文章目录
   draftsDir: 'source/_drafts',  // 草稿目录
-  ossSignUrl: ''               // 阿里云 OSS 上传签名服务（Cloudflare Worker）地址，如 https://xxx.workers.dev
-                               // 留空 = 封面上传按钮不可用（可手动填 URL）
+  ossSignUrl: 'https://oss-sign.ch16601974547.workers.dev'   // 阿里云 OSS 上传签名服务（Cloudflare Worker）地址
+                                                             // 留空 = 封面上传按钮不可用（可手动填 URL）
 }
