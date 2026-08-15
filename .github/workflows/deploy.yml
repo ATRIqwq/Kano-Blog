@@ -1,0 +1,41 @@
+# 博客自动构建部署（第一版）
+# 推送源码到 main 分支后：构建 → 压缩 → 复制管理后台 → 部署到 GitHub Pages
+name: Deploy
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:   # 支持手动触发
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build site
+        run: npx hexo clean && npx hexo generate
+
+      - name: Minify assets
+        run: npx gulp
+
+      - name: Copy admin app into public
+        run: cp -r admin public/admin
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          personal_token: ${{ secrets.PAGES_TOKEN }}
+          external_repository: ATRIqwq/ATRIqwq.github.io   # 改为你的 Pages 仓库
+          publish_branch: main
+          publish_dir: ./public

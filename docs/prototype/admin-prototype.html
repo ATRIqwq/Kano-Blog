@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文章管理后台 · 交互原型（含标签/分类管理）</title>
+<style>
+  :root{
+    --primary:#49b1f5; --primary-dark:#3b70fc; --bg:#f7f9fe; --card:#fff;
+    --border:#e3e8f0; --text:#2c3e50; --muted:#7f8fa6; --green:#52c41a;
+    --orange:#fa8c16; --red:#ff4d4f; --purple:#7e57c2;
+    --radius:10px; --shadow:0 2px 12px rgba(59,112,252,.08);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:"Microsoft YaHei","PingFang SC","Noto Sans SC",sans-serif;background:var(--bg);color:var(--text)}
+  /* ===== 原型切换条 ===== */
+  .proto-bar{position:fixed;top:0;left:0;right:0;z-index:99;background:#1f2430;color:#fff;
+    display:flex;align-items:center;gap:10px;padding:8px 20px;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.3);flex-wrap:wrap}
+  .proto-bar b{color:#7ee7c7;font-size:14px}
+  .proto-bar .btn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;
+    padding:4px 12px;border-radius:20px;cursor:pointer;font-size:13px;white-space:nowrap}
+  .proto-bar .btn:hover{background:rgba(255,255,255,.25)}
+  .proto-bar .btn.active{background:var(--primary-dark);border-color:var(--primary-dark)}
+  .proto-bar .hint{color:#9aa5b5;margin-left:auto;font-size:12px}
+  .view{display:none;padding-top:46px}
+  .view.active{display:block}
+  /* ===== 通用 ===== */
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .badge{display:inline-block;padding:1px 10px;border-radius:20px;font-size:12px;font-weight:600}
+  .badge.pub{background:#e6f7e3;color:var(--green)}
+  .badge.draft{background:#fff3e0;color:var(--orange)}
+  .badge.sticky{background:#fff0f6;color:#eb2f96}
+  .icon-btn{border:none;background:none;font-size:16px;cursor:pointer;padding:4px 6px;border-radius:6px}
+  .icon-btn:hover{background:#eef3fb}
+  .icon-btn.del:hover{background:#ffecec}
+  .icon-btn.green{color:var(--green)}
+  .btn{border:none;border-radius:8px;padding:8px 18px;font-size:14px;cursor:pointer;font-weight:600}
+  .btn.primary{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff}
+  .btn.primary:hover{filter:brightness(1.08)}
+  .btn.ghost{background:#fff;border:1px solid var(--border);color:var(--text)}
+  .btn.ghost:hover{border-color:var(--primary);color:var(--primary)}
+  .btn.green{background:var(--green);color:#fff}
+  .btn.danger{background:var(--red);color:#fff}
+  .btn.sm{padding:5px 12px;font-size:13px}
+  input,select,textarea{font-family:inherit;font-size:14px;color:var(--text)}
+  .page-body{max-width:1200px;margin:20px auto;padding:0 20px}
+  /* ===== 登录页 ===== */
+  .login-wrap{min-height:calc(100vh - 46px);display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(160deg,#eef7ff 0%,#f7f9fe 60%)}
+  .login-card{width:400px;padding:36px 34px;text-align:center}
+  .login-card .logo{width:64px;height:64px;border-radius:18px;margin:0 auto 14px;
+    background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+    display:flex;align-items:center;justify-content:center;font-size:30px;color:#fff}
+  .login-card h1{font-size:20px;margin-bottom:4px}
+  .login-card .sub{color:var(--muted);font-size:13px;margin-bottom:26px}
+  .field{text-align:left;margin-bottom:14px}
+  .field label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+  .field input,.field select,.field textarea{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(73,177,245,.15)}
+  .login-card .btn{width:100%;margin-top:6px;padding:11px}
+  .help-link{display:block;margin-top:12px;font-size:12px;color:var(--primary);text-decoration:none}
+  .tip{background:#fffbe6;border:1px solid #ffe58f;color:#ad6800;border-radius:8px;
+    font-size:12px;padding:8px 10px;margin-top:16px;text-align:left;line-height:1.6}
+  /* ===== 顶栏 ===== */
+  .topbar{background:var(--card);border-bottom:1px solid var(--border);padding:14px 28px;
+    display:flex;align-items:center;gap:14px}
+  .topbar .title{font-size:18px;font-weight:700}
+  .topbar .nav{margin-left:26px;display:flex;gap:4px;background:#eef2f9;border-radius:8px;padding:3px}
+  .topbar .nav button{border:none;background:none;padding:6px 14px;border-radius:6px;font-size:13px;cursor:pointer;color:var(--muted);font-weight:600}
+  .topbar .nav button.active{background:#fff;color:var(--primary-dark);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+  .topbar .user{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+  .topbar .avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#49b1f5,#7e57c2);
+    display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px}
+  /* ===== 工具栏 ===== */
+  .toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+  .seg{display:flex;background:#eef2f9;border-radius:8px;padding:3px}
+  .seg button{border:none;background:none;padding:6px 16px;border-radius:6px;font-size:13px;cursor:pointer;color:var(--muted);font-weight:600}
+  .seg button.active{background:#fff;color:var(--primary-dark);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+  .search{flex:1;min-width:160px;position:relative}
+  .search input{width:100%;padding:8px 12px 8px 34px;border:1px solid var(--border);border-radius:8px;background:#fff}
+  .search::before{content:"🔍";position:absolute;left:10px;top:7px;font-size:13px;opacity:.6}
+  .filter select{padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:#fff}
+  .batch-bar{display:none;align-items:center;gap:10px;background:#e6f4ff;border:1px solid #91caff;
+    border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:13px;color:#0958d9}
+  .batch-bar.show{display:flex}
+  /* ===== 表格 ===== */
+  table{width:100%;border-collapse:collapse;background:#fff}
+  thead th{font-size:12px;color:var(--muted);text-align:left;padding:10px 14px;border-bottom:1px solid var(--border);background:#fafcff}
+  tbody td{padding:10px 14px;border-bottom:1px solid #f0f3f9;font-size:13.5px;vertical-align:middle}
+  tbody tr:hover{background:#f7faff}
+  tbody tr.selected{background:#eef7ff}
+  .post-title{display:flex;align-items:center;gap:8px;font-weight:600}
+  .post-title a{color:var(--text);text-decoration:none}
+  .post-title a:hover{color:var(--primary)}
+  .tag-chip{display:inline-block;background:#eef3fb;color:#4a6da7;border-radius:4px;font-size:11px;padding:1px 8px;margin:1px 2px}
+  .cover-thumb{width:56px;height:38px;border-radius:6px;object-fit:cover;border:1px solid var(--border);background:#eef2f9;display:inline-block}
+  .pager{display:flex;align-items:center;justify-content:space-between;padding:12px 6px;font-size:13px;color:var(--muted)}
+  .pager .pages button{border:1px solid var(--border);background:#fff;width:30px;height:30px;border-radius:6px;cursor:pointer;margin-left:6px;font-size:13px}
+  .pager .pages button.active{background:var(--primary-dark);color:#fff;border-color:var(--primary-dark)}
+  /* ===== 标签/分类管理 ===== */
+  .stat-row{display:flex;gap:14px;margin-bottom:14px;flex-wrap:wrap}
+  .stat-card{flex:1;min-width:150px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+    padding:14px 18px;box-shadow:var(--shadow)}
+  .stat-card .num{font-size:24px;font-weight:700;color:var(--primary-dark)}
+  .stat-card .lbl{font-size:12px;color:var(--muted);margin-top:2px}
+  .cat-cover{width:64px;height:42px;border-radius:6px;object-fit:cover;border:1px solid var(--border);background:#eef2f9;display:inline-block;vertical-align:middle}
+  /* ===== 编辑器 ===== */
+  .edit-top{background:var(--card);border-bottom:1px solid var(--border);padding:10px 28px;
+    display:flex;align-items:center;gap:12px}
+  .edit-top .back{font-size:14px;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:4px}
+  .edit-top .back:hover{color:var(--primary)}
+  .edit-top .file-name{font-size:13px;color:var(--muted)}
+  .edit-top .actions{margin-left:auto;display:flex;gap:8px}
+  .edit-body{max-width:1400px;margin:16px auto;padding:0 20px;display:grid;grid-template-columns:340px 1fr;gap:16px}
+  @media(max-width:960px){.edit-body{grid-template-columns:1fr}}
+  .panel{padding:16px;display:flex;flex-direction:column;gap:12px;max-height:calc(100vh - 130px);overflow:auto}
+  .panel h3{font-size:13px;color:var(--muted);font-weight:600;letter-spacing:.5px;
+    padding-bottom:8px;border-bottom:1px solid var(--border)}
+  .panel .row{display:flex;gap:8px}
+  .panel .field{margin-bottom:0}
+  .chips{border:1px solid var(--border);border-radius:8px;padding:6px 8px;display:flex;flex-wrap:wrap;gap:6px;background:#fff}
+  .chips input{border:none;outline:none;flex:1;min-width:80px;padding:3px}
+  .chip{background:#eef3fb;color:#4a6da7;border-radius:20px;font-size:12px;padding:3px 10px;display:inline-flex;align-items:center;gap:5px}
+  .chip b{cursor:pointer;color:#9aa5b5;font-weight:400}
+  .chip b:hover{color:var(--red)}
+  .lock{display:flex;align-items:center;gap:6px;background:#f4f6fb;border:1px dashed #c9d4e5;border-radius:8px;
+    padding:8px 10px;font-size:12.5px;color:#6b7a90}
+  .lock b{color:var(--purple)}
+  .editor-card{display:flex;flex-direction:column;overflow:hidden}
+  .editor-tabs{display:flex;border-bottom:1px solid var(--border);background:#fafcff}
+  .editor-tabs button{border:none;background:none;padding:10px 22px;font-size:13px;cursor:pointer;color:var(--muted);font-weight:600;border-bottom:2px solid transparent}
+  .editor-tabs button.active{color:var(--primary-dark);border-bottom-color:var(--primary-dark)}
+  .editor-area{display:flex;height:calc(100vh - 240px);min-height:420px}
+  .cm-wrap{flex:1;display:flex;flex-direction:column;border-right:1px solid var(--border)}
+  .cm-gutter{background:#f4f6fb;width:46px;color:#9aa5b5;text-align:right;font-size:13px;line-height:1.7;padding:12px 8px 12px 0;user-select:none;font-family:Consolas,monospace}
+  .cm-body{flex:1;background:#fff;padding:12px 16px;font-family:Consolas,"Courier New",monospace;font-size:13.5px;line-height:1.7;color:#3d5167;outline:none;overflow:auto;white-space:pre-wrap}
+  .cm-body .fm{color:#c678dd}.cm-body .kv{color:#e5c07b}.cm-body .hd{color:#5c6a7e;font-weight:700}
+  .preview-pane{flex:1;padding:16px 20px;overflow:auto;background:#fff;font-size:14px;line-height:1.8}
+  .preview-pane h1{font-size:22px;margin-bottom:10px}
+  .preview-pane h2{font-size:17px;margin:14px 0 8px;padding-left:8px;border-left:3px solid var(--primary)}
+  .preview-pane p{margin:8px 0;color:#3d5167}
+  .preview-pane pre{background:#282c34;color:#abb2bf;border-radius:8px;padding:14px;overflow:auto;font-size:13px}
+  .preview-pane blockquote{border-left:4px solid var(--primary);background:#f0f7ff;padding:8px 14px;border-radius:0 8px 8px 0;color:#5c6a7e}
+  .preview-note{background:#fffbe6;border:1px dashed #ffd666;border-radius:8px;font-size:12px;color:#ad6800;padding:8px 12px;margin:10px 0}
+  .bottom-actions{display:flex;gap:10px;padding:12px 0}
+  /* ===== 弹窗 ===== */
+  .modal-mask{display:none;position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:200;align-items:center;justify-content:center}
+  .modal-mask.show{display:flex}
+  .modal{width:480px;background:#fff;border-radius:12px;padding:22px 24px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+  .modal h3{font-size:16px;margin-bottom:14px}
+  .modal .row{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+  .affect{background:#f6f8fb;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#5c6a7e;margin-top:12px;max-height:140px;overflow:auto}
+  .affect b{color:var(--red)}
+</style>
+</head>
+<body>
+
+<!-- ========== 原型切换条 ========== -->
+<div class="proto-bar">
+  <b>📐 管理后台交互原型</b>
+  <button class="btn active" data-view="login">① 登录页</button>
+  <button class="btn" data-view="list">② 文章列表</button>
+  <button class="btn" data-view="editor">③ 文章编辑器</button>
+  <button class="btn" data-view="tags">④ 标签管理</button>
+  <button class="btn" data-view="categories">⑤ 分类管理</button>
+  <span class="hint">方案 C · 在线管理（GitHub API + Actions）· 纯静态演示</span>
+</div>
+
+<!-- ========== ① 登录页 ========== -->
+<div id="view-login" class="view active">
+  <div class="login-wrap">
+    <div class="login-card card">
+      <div class="logo">✏️</div>
+      <h1>文章管理后台</h1>
+      <div class="sub">Fomalhaut · KanoのHome 🍭</div>
+      <div class="field">
+        <label>GitHub 访问令牌（Fine-grained PAT）</label>
+        <input type="password" placeholder="github_pat_xxxxxxxxxxxx" value="••••••••••••••••••••••••">
+      </div>
+      <button class="btn primary">登 录</button>
+      <a class="help-link" href="#">如何生成令牌？→ 仅授权「源码仓库」+ Contents 读写权限</a>
+      <div class="tip">🔒 令牌仅保存在当前浏览器的会话存储（sessionStorage）中，关闭浏览器即失效；建议使用 90 天有效期令牌，可在 GitHub 随时吊销。</div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== ② 文章列表页 ========== -->
+<div id="view-list" class="view">
+  <div class="topbar">
+    <div class="title">📝 文章管理</div>
+    <div class="nav">
+      <button class="active">文章</button><button>标签</button><button>分类</button>
+    </div>
+    <div class="user"><span>Kano</span><div class="avatar">K</div><span class="badge pub">已连接 GitHub</span></div>
+  </div>
+  <div class="page-body">
+    <div class="toolbar">
+      <div class="seg">
+        <button class="active">全部 (8)</button>
+        <button>已发布 (7)</button>
+        <button>草稿 (1)</button>
+      </div>
+      <div class="search"><input placeholder="搜索标题、内容关键词…"></div>
+      <div class="filter"><select><option>全部分类</option><option>Web前端</option><option>Java基础</option><option>基础学习</option><option>魔改教程</option><option>演示</option><option>文档</option><option>日常life</option></select></div>
+      <button class="btn primary">＋ 新建文章</button>
+    </div>
+
+    <div class="batch-bar show">
+      <span>已选 <b>2</b> 篇文章</span>
+      <button class="btn sm ghost">🏷️ 批量打标签</button>
+      <button class="btn sm ghost">📁 移动分类</button>
+      <button class="btn sm ghost">🚀 发布</button>
+      <button class="btn sm ghost">🗑️ 批量删除</button>
+      <button class="btn sm ghost" style="margin-left:auto">取消选择</button>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead>
+          <tr><th style="width:34px"><input type="checkbox"></th><th style="width:66px">封面</th><th>标题</th><th style="width:88px">分类</th><th>标签</th><th style="width:112px">日期</th><th style="width:150px">操作</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><input type="checkbox"></td>
+            <td><img class="cover-thumb" src="https://kano-img-bed.oss-cn-shanghai.aliyuncs.com/01.jpg" onerror="this.style.visibility='hidden'"></td>
+            <td><div class="post-title"><span class="badge sticky">置顶</span><a href="#">Markdown语法与外挂标签写法汇总</a></div></td>
+            <td>演示</td>
+            <td><span class="tag-chip">Markdown</span><span class="tag-chip">外挂标签</span></td>
+            <td>2022-08-09</td>
+            <td><button class="icon-btn" title="编辑">✏️</button><button class="icon-btn" title="预览">👁️</button><button class="icon-btn" title="下线为草稿">📥</button><button class="icon-btn del" title="删除">🗑️</button></td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" checked></td>
+            <td><img class="cover-thumb" src="https://pic2.zhimg.com/v2-8bd6ea8aa923f79426f98942246013d1_r.jpg" onerror="this.style.visibility='hidden'"></td>
+            <td><div class="post-title"><a href="#">css小练习(1) 仿Bilibli个人名片</a></div></td>
+            <td>Web前端</td>
+            <td><span class="tag-chip">Web</span><span class="tag-chip">CSS</span></td>
+            <td>2022-11-27</td>
+            <td><button class="icon-btn" title="编辑">✏️</button><button class="icon-btn" title="预览">👁️</button><button class="icon-btn" title="下线为草稿">📥</button><button class="icon-btn del" title="删除">🗑️</button></td>
+          </tr>
+          <tr class="selected">
+            <td><input type="checkbox" checked></td>
+            <td><div class="cover-thumb"></div></td>
+            <td><div class="post-title"><a href="#">分布式Session登录技术</a></div></td>
+            <td>Java基础</td>
+            <td><span class="tag-chip">Java</span><span class="tag-chip">Session</span><span class="tag-chip">Redis</span></td>
+            <td>2022-10-15</td>
+            <td><button class="icon-btn" title="编辑">✏️</button><button class="icon-btn" title="预览">👁️</button><button class="icon-btn" title="下线为草稿">📥</button><button class="icon-btn del" title="删除">🗑️</button></td>
+          </tr>
+          <tr>
+            <td><input type="checkbox"></td>
+            <td><div class="cover-thumb"></div></td>
+            <td><div class="post-title"><span class="badge draft">草稿</span><a href="#">【草稿】Hexo 博客部署到 GitHub Pages 完整指南</a></div></td>
+            <td>魔改教程</td>
+            <td><span class="tag-chip">Hexo</span><span class="tag-chip">部署</span></td>
+            <td>2024-03-02</td>
+            <td><button class="icon-btn" title="编辑">✏️</button><button class="icon-btn" title="预览">👁️</button><button class="icon-btn green" title="发布上线">🚀</button><button class="icon-btn del" title="删除">🗑️</button></td>
+          </tr>
+          <tr>
+            <td><input type="checkbox"></td>
+            <td><div class="cover-thumb"></div></td>
+            <td><div class="post-title"><a href="#">汇编语言笔记</a></div></td>
+            <td>基础学习</td>
+            <td><span class="tag-chip">汇编</span></td>
+            <td>2022-09-01</td>
+            <td><button class="icon-btn" title="编辑">✏️</button><button class="icon-btn" title="预览">👁️</button><button class="icon-btn" title="下线为草稿">📥</button><button class="icon-btn del" title="删除">🗑️</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="pager">
+        <span>共 8 篇文章 · 每页 10 条</span>
+        <div class="pages"><button disabled>‹</button><button class="active">1</button><button>›</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== ③ 文章编辑器页 ========== -->
+<div id="view-editor" class="view">
+  <div class="edit-top">
+    <div class="back">‹ 返回列表</div>
+    <span class="file-name">分布式Session登录技术.md</span>
+    <div class="actions">
+      <button class="btn ghost">💾 保存修改</button>
+      <button class="btn green">🚀 发布</button>
+    </div>
+  </div>
+  <div class="edit-body">
+    <div class="panel card">
+      <h3>基本信息</h3>
+      <div class="field"><label>标题 *</label><input value="分布式Session登录技术"></div>
+      <div class="row">
+        <div class="field" style="flex:1"><label>日期</label><input value="2022-10-15 20:30"></div>
+        <div class="field" style="flex:1"><label>更新时间</label><input value="2024-03-02 10:00"></div>
+      </div>
+      <div class="field">
+        <label>分类（下拉选择 / 可新建）</label>
+        <select><option>Java基础</option><option>Web前端</option><option>基础学习</option><option>魔改教程</option><option>演示</option><option>文档</option><option>日常life</option><option style="color:var(--primary)">＋ 新建分类…</option></select>
+      </div>
+      <div class="field">
+        <label>标签（chips 选择器：搜索已有 / 回车新建）</label>
+        <div class="chips">
+          <span class="chip">Java <b>×</b></span><span class="chip">Session <b>×</b></span><span class="chip">Redis <b>×</b></span>
+          <input placeholder="输入后回车添加…">
+        </div>
+      </div>
+      <div class="field"><label>封面图 URL</label><input value="https://source.fomal.cc/img/default_cover_16.webp"></div>
+      <div class="field"><label>摘要 description</label><textarea rows="2" style="resize:vertical">分布式环境下 Session 共享的几种解决方案对比…</textarea></div>
+      <h3>主题扩展</h3>
+      <div class="row">
+        <div class="field" style="flex:1"><label>置顶 sticky</label><input value="0"></div>
+        <div class="field" style="flex:1"><label>swiper_index</label><input value=""></div>
+      </div>
+      <div class="field"><label>加密密码 password（hexo-blog-encrypt）</label><input placeholder="留空 = 不加密"></div>
+      <div class="row">
+        <div class="field" style="flex:1"><label>mathjax</label><select><option>true</option><option>false</option></select></div>
+        <div class="field" style="flex:1"><label>评论</label><select><option>true</option><option>false</option></select></div>
+      </div>
+      <h3>链接（系统锁定）</h3>
+      <div class="lock">🔗 abbrlink：<b>7f3a9c21</b><span style="color:#9aa5b5">（修改会导致已发布链接失效）</span></div>
+      <div class="bottom-actions">
+        <button class="btn ghost" style="flex:1">取消</button>
+        <button class="btn primary" style="flex:1">💾 保存修改</button>
+      </div>
+    </div>
+    <div class="editor-card card">
+      <div class="editor-tabs">
+        <button class="active">编辑 Markdown</button>
+        <button>预览</button>
+      </div>
+      <div class="editor-area">
+        <div class="cm-wrap">
+          <div class="cm-gutter">1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10</div>
+          <div class="cm-body"><span class="hd"># 分布式Session登录技术</span>
+
+<span class="fm">{% note info flat %}</span>本篇文章是分布式登录技术笔记，涵盖 Session 共享的三种主流方案<span class="fm">{% endnote %}</span>
+
+## 一、问题背景
+
+在集群部署下，用户登录状态存放在单台服务器的 Session 中，
+请求被负载均衡到其他节点时无法识别，导致<span class="kv">**反复登录**</span>。
+
+## 二、解决方案对比
+
+<span class="fm">{% tabs 方案对比 %}</span>
+
+<span class="fm">&lt;!-- tab Session 复制 --&gt;</span>
+Tomcat 自带集群 Session 复制，配置简单但只适合小规模集群。
+
+<span class="fm">&lt;!-- tab Redis 共享 --&gt;</span>
+将 Session 存入 Redis，所有节点共享，<span class="kv">**推荐方案**</span>。
+
+<span class="fm">&lt;!-- tab Token 无状态 --&gt;</span>
+JWT 等无状态方案，服务端不保存状态，扩展性最好。
+<span class="fm">{% endtabs %}</span></div>
+        </div>
+        <div class="preview-pane">
+          <h1>分布式Session登录技术</h1>
+          <blockquote>📌 本篇文章是分布式登录技术笔记，涵盖 Session 共享的三种主流方案</blockquote>
+          <h2>一、问题背景</h2>
+          <p>在集群部署下，用户登录状态存放在单台服务器的 Session 中，请求被负载均衡到其他节点时无法识别，导致<strong>反复登录</strong>。</p>
+          <h2>二、解决方案对比</h2>
+          <p><strong>① Session 复制</strong>：Tomcat 自带集群 Session 复制，配置简单但只适合小规模集群。</p>
+          <p><strong>② Redis 共享（推荐）</strong>：将 Session 存入 Redis，所有节点共享。</p>
+          <p><strong>③ Token 无状态</strong>：JWT 等无状态方案，服务端不保存状态，扩展性最好。</p>
+          <div class="preview-note">⚠️ 近似预览：外挂标签（{% note %}/{% tabs %}）以占位形式显示，最终效果以 GitHub Actions 构建发布后的站点为准。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== ④ 标签管理页 ========== -->
+<div id="view-tags" class="view">
+  <div class="topbar">
+    <div class="title">🏷️ 标签管理</div>
+    <div class="nav"><button>文章</button><button class="active">标签</button><button>分类</button></div>
+    <div class="user"><span>Kano</span><div class="avatar">K</div></div>
+  </div>
+  <div class="page-body">
+    <div class="stat-row">
+      <div class="stat-card"><div class="num">11</div><div class="lbl">标签总数</div></div>
+      <div class="stat-card"><div class="num">7</div><div class="lbl">覆盖文章数</div></div>
+      <div class="stat-card"><div class="num">2.1</div><div class="lbl">平均每篇标签数</div></div>
+      <div class="stat-card"><div class="num">4</div><div class="lbl">近 30 天新增</div></div>
+    </div>
+    <div class="toolbar">
+      <div class="seg"><button class="active">表格视图</button><button>标签云</button></div>
+      <div class="search"><input placeholder="搜索标签…"></div>
+      <button class="btn ghost sm" title="合并重复标签（Git Data API 一次 commit）">🔀 合并重复标签</button>
+    </div>
+    <div class="card">
+      <table>
+        <thead>
+          <tr><th>标签名</th><th style="width:100px">文章数</th><th style="width:150px">最近使用</th><th style="width:220px">操作</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="tag-chip" style="font-size:13px;padding:3px 12px">Java</span></td><td>3</td><td>2024-03-02</td>
+            <td><button class="btn sm ghost" onclick="openModal('rename')">✏️ 重命名</button><button class="btn sm ghost">👁️ 查看文章</button><button class="btn sm ghost" style="color:var(--red)">🗑️ 删除</button></td></tr>
+          <tr><td><span class="tag-chip" style="font-size:13px;padding:3px 12px">CSS</span></td><td>2</td><td>2022-11-27</td>
+            <td><button class="btn sm ghost" onclick="openModal('rename')">✏️ 重命名</button><button class="btn sm ghost">👁️ 查看文章</button><button class="btn sm ghost" style="color:var(--red)">🗑️ 删除</button></td></tr>
+          <tr><td><span class="tag-chip" style="font-size:13px;padding:3px 12px">Markdown</span></td><td>1</td><td>2022-08-09</td>
+            <td><button class="btn sm ghost" onclick="openModal('rename')">✏️ 重命名</button><button class="btn sm ghost">👁️ 查看文章</button><button class="btn sm ghost" style="color:var(--red)">🗑️ 删除</button></td></tr>
+          <tr><td><span class="tag-chip" style="font-size:13px;padding:3px 12px">外挂标签</span></td><td>1</td><td>2022-08-09</td>
+            <td><button class="btn sm ghost" onclick="openModal('rename')">✏️ 重命名</button><button class="btn sm ghost">👁️ 查看文章</button><button class="btn sm ghost" style="color:var(--red)">🗑️ 删除</button></td></tr>
+          <tr><td><span class="tag-chip" style="font-size:13px;padding:3px 12px">Session</span></td><td>1</td><td>2022-10-15</td>
+            <td><button class="btn sm ghost" onclick="openModal('rename')">✏️ 重命名</button><button class="btn sm ghost">👁️ 查看文章</button><button class="btn sm ghost" style="color:var(--red)">🗑️ 删除</button></td></tr>
+          <tr><td><span class="tag-chip" style="font-size:13px;padding:3px 12px">Hexo</span></td><td>2</td><td>2024-03-02</td>
+            <td><button class="btn sm ghost" onclick="openModal('rename')">✏️ 重命名</button><button class="btn sm ghost">👁️ 查看文章</button><button class="btn sm ghost" style="color:var(--red)">🗑️ 删除</button></td></tr>
+        </tbody>
+      </table>
+      <div class="pager"><span>共 11 个标签</span><div class="pages"><button disabled>‹</button><button class="active">1</button><button>2</button><button>›</button></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== ⑤ 分类管理页 ========== -->
+<div id="view-categories" class="view">
+  <div class="topbar">
+    <div class="title">📁 分类管理</div>
+    <div class="nav"><button>文章</button><button>标签</button><button class="active">分类</button></div>
+    <div class="user"><span>Kano</span><div class="avatar">K</div></div>
+  </div>
+  <div class="page-body">
+    <div class="stat-row">
+      <div class="stat-card"><div class="num">7</div><div class="lbl">分类总数</div></div>
+      <div class="stat-card"><div class="num">8</div><div class="lbl">文章总覆盖</div></div>
+      <div class="stat-card"><div class="num">6</div><div class="lbl">已配置磁贴封面</div></div>
+    </div>
+    <div class="toolbar">
+      <div class="search"><input placeholder="搜索分类…"></div>
+      <button class="btn ghost sm">🖼️ 分类封面管理（categoryBar）</button>
+    </div>
+    <div class="card">
+      <table>
+        <thead>
+          <tr><th style="width:90px">封面</th><th>分类名</th><th style="width:100px">文章数</th><th style="width:220px">磁贴描述</th><th style="width:240px">操作</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><img class="cat-cover" src="https://t.alcy.cc/moe" onerror="this.style.visibility='hidden'"></td>
+            <td style="font-weight:600">Web前端</td><td>2</td><td style="color:var(--muted);font-size:12.5px">Web前端</td>
+            <td><button class="btn sm ghost" onclick="openModal('rename')">✏️ 重命名</button><button class="btn sm ghost">👁️ 查看文章</button><button class="btn sm ghost" style="color:var(--red)">🗑️ 删除</button></td>
+          </tr>
+          <tr>
+            <td><img class="cat-cover" src="https://source.fomal.cc/img/default_cover_16.webp" onerror="this.style.visibility='hidden'"></td>
+            <td style="font-weight:600">Java基础</td><td>1</td><td style="color:var(--muted);font-size:12.5px">Java基础</td>
+            <td><button class="btn sm ghost" onclick="openModal('rename')">✏️ 重命名</button><button class="btn sm ghost">👁️ 查看文章</button><button class="btn sm ghost" style="color:var(--red)">🗑️ 删除</button></td>
+          </tr>
+          <tr>
+            <td><img class="cat-cover" src="https://source.fomal.cc/img/default_cover_14.webp" onerror="this.style.visibility='hidden'"></td>
+            <td style="font-weight:600">基础学习</td><td>1</td><td style="color:var(--muted);font-size:12.5px">基础学习</td>
+            <td><button class="btn sm ghost" onclick="openModal('rename')">✏️ 重命名</button><button class="btn sm ghost">👁️ 查看文章</button><button class="btn sm ghost" style="color:var(--red)">🗑️ 删除</button></td>
+          </tr>
+          <tr>
+            <td><img class="cat-cover" src="https://source.fomal.cc/img/default_cover_12.webp" onerror="this.style.visibility='hidden'"></td>
+            <td style="font-weight:600">魔改教程</td><td>2</td><td style="color:var(--muted);font-size:12.5px">魔改教程</td>
+            <td><button class="btn sm ghost" onclick="openModal('rename')">✏️ 重命名</button><button class="btn sm ghost">👁️ 查看文章</button><button class="btn sm ghost" style="color:var(--red)">🗑️ 删除</button></td>
+          </tr>
+          <tr>
+            <td><div class="cat-cover"></div></td>
+            <td style="font-weight:600">演示</td><td>1</td><td style="color:var(--muted);font-size:12.5px">—</td>
+            <td><button class="btn sm ghost" onclick="openModal('rename')">✏️ 重命名</button><button class="btn sm ghost">👁️ 查看文章</button><button class="btn sm ghost" style="color:var(--red)">🗑️ 删除</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="pager"><span>共 7 个分类</span><div class="pages"><button disabled>‹</button><button class="active">1</button><button>›</button></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 重命名弹窗（演示） ========== -->
+<div class="modal-mask" id="rename-modal">
+  <div class="modal">
+    <h3>✏️ 重命名标签「Java」</h3>
+    <div class="field"><label>新名称 *</label><input value="Java 基础" id="rename-input"></div>
+    <div class="affect">将影响 <b>3</b> 篇文章：<br>
+      · 分布式Session登录技术.md（Java → Java 基础）<br>
+      · 如何将项目上传github.md（Java → Java 基础）<br>
+      · 【草稿】Java 集合框架.md（Java → Java 基础）<br><br>
+      确认后将通过 <b>Git Data API 一次性 commit</b>（提交说明：<i>rename tag: Java → Java 基础</i>）
+    </div>
+    <div class="row">
+      <button class="btn ghost" onclick="closeModal()">取消</button>
+      <button class="btn primary" onclick="closeModal()">确认重命名并提交</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 原型视图切换
+  document.querySelectorAll('.proto-bar .btn').forEach(b=>{
+    b.addEventListener('click',()=>{
+      document.querySelectorAll('.proto-bar .btn').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+      b.classList.add('active');
+      document.getElementById('view-'+b.dataset.view).classList.add('active');
+      window.scrollTo(0,0);
+    });
+  });
+  // 编辑器内 tab 切换
+  document.querySelectorAll('.editor-tabs button').forEach(b=>{
+    b.addEventListener('click',()=>{
+      document.querySelectorAll('.editor-tabs button').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      const isPreview = b.textContent.includes('预览');
+      document.querySelector('.cm-wrap').style.display = isPreview ? 'none' : 'flex';
+      document.querySelector('.preview-pane').style.display = isPreview ? 'block' : 'none';
+    });
+  });
+  // 弹窗
+  function openModal(id){ document.getElementById(id+'-modal').classList.add('show'); }
+  function closeModal(){ document.querySelectorAll('.modal-mask').forEach(m=>m.classList.remove('show')); }
+  document.querySelectorAll('.modal-mask').forEach(m=>m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('show'); }));
+</script>
+</body>
+</html>

@@ -1,0 +1,170 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1000" viewBox="0 0 1280 1000" font-family="'Microsoft YaHei','PingFang SC','Noto Sans SC',sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#546e7a"/>
+    </marker>
+  </defs>
+
+  <rect width="1280" height="1000" fill="#fafbfc"/>
+  <text x="640" y="34" text-anchor="middle" font-size="22" font-weight="bold" fill="#263238">Hexo 博客架构图 — Fomalhaut 主题（基于 Butterfly 4.3.1 深度魔改）</text>
+  <text x="640" y="56" text-anchor="middle" font-size="13" fill="#78909c">数据流：Markdown 内容 + 配置 → Hexo 渲染（调用主题）→ public/ → gulp 压缩 → GitHub Pages 发布</text>
+
+  <!-- ============ ① 内容层 ============ -->
+  <rect x="20" y="78" width="620" height="200" rx="10" fill="#e8f5e9" stroke="#66bb6a" stroke-width="1.5"/>
+  <text x="40" y="104" font-size="15" font-weight="bold" fill="#2e7d32">① 内容层 · source/（博客内容）</text>
+
+  <rect x="40" y="120" width="190" height="58" rx="6" fill="#ffffff" stroke="#a5d6a7"/>
+  <text x="135" y="140" text-anchor="middle" font-size="13" font-weight="bold" fill="#263238">source/_posts</text>
+  <text x="135" y="160" text-anchor="middle" font-size="11" fill="#455a64">文章 Markdown（7 篇）</text>
+
+  <rect x="245" y="120" width="190" height="58" rx="6" fill="#ffffff" stroke="#a5d6a7"/>
+  <text x="340" y="140" text-anchor="middle" font-size="13" font-weight="bold" fill="#263238">source/_drafts</text>
+  <text x="340" y="160" text-anchor="middle" font-size="11" fill="#455a64">草稿</text>
+
+  <rect x="450" y="120" width="170" height="58" rx="6" fill="#ffffff" stroke="#a5d6a7"/>
+  <text x="535" y="140" text-anchor="middle" font-size="13" font-weight="bold" fill="#263238">scaffolds/</text>
+  <text x="535" y="160" text-anchor="middle" font-size="11" fill="#455a64">新建文章模板</text>
+
+  <rect x="40" y="192" width="190" height="58" rx="6" fill="#ffffff" stroke="#a5d6a7"/>
+  <text x="135" y="212" text-anchor="middle" font-size="13" font-weight="bold" fill="#263238">自定义页面</text>
+  <text x="135" y="232" text-anchor="middle" font-size="11" fill="#455a64">box · life · personal · site · social</text>
+
+  <rect x="245" y="192" width="190" height="58" rx="6" fill="#ffffff" stroke="#a5d6a7"/>
+  <text x="340" y="212" text-anchor="middle" font-size="13" font-weight="bold" fill="#263238">source/_data</text>
+  <text x="340" y="232" text-anchor="middle" font-size="11" fill="#455a64">link.yml · widget.yml</text>
+
+  <rect x="450" y="192" width="170" height="58" rx="6" fill="#ffffff" stroke="#a5d6a7"/>
+  <text x="535" y="212" text-anchor="middle" font-size="13" font-weight="bold" fill="#263238">静态资源</text>
+  <text x="535" y="232" text-anchor="middle" font-size="11" fill="#455a64">css · js · img · assets</text>
+
+  <!-- ============ ② 配置层 ============ -->
+  <rect x="660" y="78" width="600" height="200" rx="10" fill="#fff8e1" stroke="#ffb300" stroke-width="1.5"/>
+  <text x="680" y="104" font-size="15" font-weight="bold" fill="#ef6c00">② 配置层（站点与主题配置）</text>
+
+  <rect x="680" y="120" width="280" height="58" rx="6" fill="#ffffff" stroke="#ffe082"/>
+  <text x="820" y="140" text-anchor="middle" font-size="13" font-weight="bold" fill="#263238">_config.yml</text>
+  <text x="820" y="160" text-anchor="middle" font-size="11" fill="#455a64">站点 · URL/permalink · 插件 · 部署</text>
+
+  <rect x="980" y="120" width="260" height="58" rx="6" fill="#ffffff" stroke="#ffe082"/>
+  <text x="1110" y="140" text-anchor="middle" font-size="13" font-weight="bold" fill="#263238">_config.butterfly.yml</text>
+  <text x="1110" y="160" text-anchor="middle" font-size="11" fill="#455a64">主题配置（用户覆盖）</text>
+
+  <rect x="680" y="192" width="280" height="58" rx="6" fill="#ffffff" stroke="#ffe082"/>
+  <text x="820" y="212" text-anchor="middle" font-size="13" font-weight="bold" fill="#263238">themes/butterfly/_config.yml</text>
+  <text x="820" y="232" text-anchor="middle" font-size="11" fill="#455a64">主题完整配置（109+ 项）</text>
+
+  <rect x="980" y="192" width="260" height="58" rx="6" fill="#ffffff" stroke="#ffe082"/>
+  <text x="1110" y="212" text-anchor="middle" font-size="13" font-weight="bold" fill="#263238">package.json · gulpfile.js</text>
+  <text x="1110" y="232" text-anchor="middle" font-size="11" fill="#455a64">依赖（node_modules）· 压缩任务</text>
+
+  <!-- ============ 箭头：内容/配置 → 构建 ============ -->
+  <line x1="320" y1="278" x2="320" y2="318" stroke="#546e7a" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="330" y="303" font-size="12" fill="#546e7a">文章/页面</text>
+  <line x1="960" y1="278" x2="960" y2="318" stroke="#546e7a" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="970" y="303" font-size="12" fill="#546e7a">配置注入</text>
+
+  <!-- ============ ③ 构建层 ============ -->
+  <rect x="20" y="320" width="1240" height="190" rx="10" fill="#e3f2fd" stroke="#42a5f5" stroke-width="1.5"/>
+  <text x="40" y="348" font-size="15" font-weight="bold" fill="#1565c0">③ 构建层（Hexo 6.3 渲染引擎）</text>
+
+  <rect x="40" y="362" width="280" height="120" rx="6" fill="#ffffff" stroke="#90caf9"/>
+  <text x="180" y="386" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#263238">hexo 核心</text>
+  <text x="180" y="410" text-anchor="middle" font-size="11" fill="#455a64">渲染管线</text>
+  <text x="180" y="430" text-anchor="middle" font-size="11" fill="#455a64">Markdown → HTML</text>
+  <text x="180" y="450" text-anchor="middle" font-size="11" fill="#455a64">数据库 db.json 缓存</text>
+
+  <rect x="330" y="362" width="280" height="120" rx="6" fill="#ffffff" stroke="#90caf9"/>
+  <text x="470" y="386" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#263238">渲染器 Renderers</text>
+  <text x="470" y="410" text-anchor="middle" font-size="11" fill="#455a64">markdown-it · kramed</text>
+  <text x="470" y="430" text-anchor="middle" font-size="11" fill="#455a64">markdown-it-plus（外挂标签）</text>
+  <text x="470" y="450" text-anchor="middle" font-size="11" fill="#455a64">pug · stylus · ejs</text>
+
+  <rect x="620" y="362" width="280" height="120" rx="6" fill="#ffffff" stroke="#90caf9"/>
+  <text x="760" y="386" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#263238">生成器 Generators</text>
+  <text x="760" y="410" text-anchor="middle" font-size="11" fill="#455a64">index · archive · category · tag</text>
+  <text x="760" y="430" text-anchor="middle" font-size="11" fill="#455a64">feed（RSS）· sitemap · baidusitemap</text>
+  <text x="760" y="450" text-anchor="middle" font-size="11" fill="#455a64">search（本地搜索 search.xml）</text>
+
+  <rect x="910" y="362" width="330" height="120" rx="6" fill="#ffffff" stroke="#90caf9"/>
+  <text x="1075" y="386" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#263238">插件生态 Plugins</text>
+  <text x="1075" y="410" text-anchor="middle" font-size="11" fill="#455a64">hexo-abbrlink（链接）· algoliasearch</text>
+  <text x="1075" y="430" text-anchor="middle" font-size="11" fill="#455a64">blog-encrypt · butterfly-* 系列（swiper/</text>
+  <text x="1075" y="450" text-anchor="middle" font-size="11" fill="#455a64">envelope/wowjs/categories-card/clock）</text>
+  <text x="1075" y="470" text-anchor="middle" font-size="11" fill="#455a64">gitcalendar · wordcount-fomal · magnet · aplayer · pdf</text>
+
+  <!-- ============ 箭头：构建 → 主题 ============ -->
+  <line x1="640" y1="510" x2="640" y2="550" stroke="#546e7a" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="650" y="536" font-size="12" fill="#546e7a">加载主题：注册 helpers/tags/filters/events，渲染 layout 模板</text>
+
+  <!-- ============ ④ 主题层 ============ -->
+  <rect x="20" y="550" width="1240" height="210" rx="10" fill="#ede7f6" stroke="#7e57c2" stroke-width="1.5"/>
+  <text x="40" y="578" font-size="15" font-weight="bold" fill="#4527a0">④ 主题层（Fomalhaut = Butterfly 4.3.1 魔改 · Pug + Stylus + Hexo 扩展）</text>
+
+  <rect x="40" y="592" width="280" height="140" rx="6" fill="#ffffff" stroke="#b39ddb"/>
+  <text x="180" y="616" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#263238">layout/ Pug 模板</text>
+  <text x="180" y="640" text-anchor="middle" font-size="11" fill="#455a64">index · post · page</text>
+  <text x="180" y="660" text-anchor="middle" font-size="11" fill="#455a64">archive · category · tag · 404</text>
+  <text x="180" y="680" text-anchor="middle" font-size="11" fill="#455a64">includes/：head · header · sidebar</text>
+  <text x="180" y="700" text-anchor="middle" font-size="11" fill="#455a64">widget · third-party · loading · mixins</text>
+
+  <rect x="330" y="592" width="280" height="140" rx="6" fill="#ffffff" stroke="#b39ddb"/>
+  <text x="470" y="616" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#263238">scripts/ Hexo 扩展点</text>
+  <text x="470" y="640" text-anchor="middle" font-size="11" fill="#455a64">helpers：page · echarts · inject_head_js</text>
+  <text x="470" y="660" text-anchor="middle" font-size="11" fill="#455a64">tags：button · flink · gallery · note · tabs</text>
+  <text x="470" y="680" text-anchor="middle" font-size="11" fill="#455a64">filters：lazyload · random_cover</text>
+  <text x="470" y="700" text-anchor="middle" font-size="11" fill="#455a64">events：init · stylus · cdn · comment</text>
+
+  <rect x="620" y="592" width="280" height="140" rx="6" fill="#ffffff" stroke="#b39ddb"/>
+  <text x="760" y="616" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#263238">source/ 样式与前端脚本</text>
+  <text x="760" y="640" text-anchor="middle" font-size="11" fill="#455a64">css/index.styl（var + _global/</text>
+  <text x="760" y="660" text-anchor="middle" font-size="11" fill="#455a64">_layout/_page/_tags/_mode/</text>
+  <text x="760" y="680" text-anchor="middle" font-size="11" fill="#455a64">_highlight/_search/_custom）</text>
+  <text x="760" y="700" text-anchor="middle" font-size="11" fill="#455a64">js/main.js · utils.js · img/</text>
+
+  <rect x="910" y="592" width="330" height="140" rx="6" fill="#ffffff" stroke="#b39ddb"/>
+  <text x="1075" y="616" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#263238">多语言与元信息</text>
+  <text x="1075" y="640" text-anchor="middle" font-size="11" fill="#455a64">languages/：zh-CN · en · zh-TW · default</text>
+  <text x="1075" y="660" text-anchor="middle" font-size="11" fill="#455a64">plugins.yml · package.json</text>
+  <text x="1075" y="680" text-anchor="middle" font-size="11" fill="#455a64">自定义：_custom/custom.css · lantern.css</text>
+
+  <!-- ============ 箭头：主题 → 产物 ============ -->
+  <line x1="640" y1="760" x2="640" y2="800" stroke="#546e7a" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="650" y="786" font-size="12" fill="#546e7a">输出静态 HTML/CSS/JS → public/</text>
+
+  <!-- ============ ⑤ 产物与部署层 ============ -->
+  <rect x="20" y="800" width="1240" height="160" rx="10" fill="#fce4ec" stroke="#ec407a" stroke-width="1.5"/>
+  <text x="40" y="828" font-size="15" font-weight="bold" fill="#ad1457">⑤ 产物与部署层（静态站点 → 压缩 → 发布）</text>
+
+  <rect x="40" y="842" width="220" height="90" rx="6" fill="#ffffff" stroke="#f48fb1"/>
+  <text x="150" y="866" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#263238">public/</text>
+  <text x="150" y="890" text-anchor="middle" font-size="11" fill="#455a64">生成的静态站点</text>
+  <text x="150" y="910" text-anchor="middle" font-size="11" fill="#455a64">HTML · CSS · JS</text>
+
+  <rect x="275" y="842" width="220" height="90" rx="6" fill="#ffffff" stroke="#f48fb1"/>
+  <text x="385" y="866" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#263238">gulp 压缩（gulpfile.js）</text>
+  <text x="385" y="890" text-anchor="middle" font-size="11" fill="#455a64">compress（JS）</text>
+  <text x="385" y="910" text-anchor="middle" font-size="11" fill="#455a64">minify-css · minify-html</text>
+
+  <rect x="510" y="842" width="240" height="90" rx="6" fill="#ffffff" stroke="#f48fb1"/>
+  <text x="630" y="866" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#263238">hexo-deployer-git</text>
+  <text x="630" y="890" text-anchor="middle" font-size="11" fill="#455a64">git 推送部署</text>
+  <text x="630" y="910" text-anchor="middle" font-size="11" fill="#455a64">（可配百度收录推送）</text>
+
+  <rect x="765" y="842" width="240" height="90" rx="6" fill="#ffffff" stroke="#f48fb1"/>
+  <text x="885" y="866" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#263238">GitHub Pages</text>
+  <text x="885" y="890" text-anchor="middle" font-size="11" fill="#455a64">ATRIqwq.github.io</text>
+  <text x="885" y="910" text-anchor="middle" font-size="11" fill="#455a64">（用户访问）</text>
+
+  <rect x="1020" y="842" width="220" height="90" rx="6" fill="#ffffff" stroke="#f48fb1"/>
+  <text x="1130" y="866" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#263238">外部服务</text>
+  <text x="1130" y="890" text-anchor="middle" font-size="11" fill="#455a64">CDN · 评论 · 统计 · 搜索</text>
+  <text x="1130" y="910" text-anchor="middle" font-size="11" fill="#455a64">百度收录 · RSS 订阅</text>
+
+  <!-- 水平箭头 -->
+  <line x1="260" y1="887" x2="273" y2="887" stroke="#ec407a" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="495" y1="887" x2="508" y2="887" stroke="#ec407a" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="750" y1="887" x2="763" y2="887" stroke="#ec407a" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="1005" y1="887" x2="1018" y2="887" stroke="#ec407a" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <text x="640" y="982" text-anchor="middle" font-size="12" fill="#90a4ae">本地命令：hexo clean · hexo generate（build）· hexo server（预览）· hexo deploy（发布）· gulp（压缩）</text>
+</svg>
