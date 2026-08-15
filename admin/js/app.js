@@ -41,9 +41,14 @@
     const h = raw.split('?')[0]   // 去掉 query 参数，如 #/editor?path=xxx → editor
     if (!state.authed) { showView('login'); return }
     showView('main')
+    $$('.nav a').forEach(a => a.classList.toggle('active', a.dataset.nav === h))
     if (h === 'editor') renderEditor()
+    else if (h === 'page-editor') renderPageEditor()
     else if (h === 'tags') renderTags()
     else if (h === 'categories') renderCategories()
+    else if (h === 'links') renderLinks()
+    else if (h === 'pages') renderPages()
+    else if (h === 'widgets') renderWidgets()
     else renderList()
   }
   function showView(name) {
@@ -257,20 +262,7 @@
         </div>
       </div>`
 
-    // 预览切换
-    $$('.editor-tabs button').forEach(b => b.addEventListener('click', () => {
-      $$('.editor-tabs button').forEach(x => x.classList.remove('active'))
-      b.classList.add('active')
-      const isPrev = b.dataset.tab === 'preview'
-      $('#f-content').style.display = isPrev ? 'none' : 'block'
-      $('#preview-pane').style.display = isPrev ? 'block' : 'none'
-      if (isPrev) $('#preview-pane').innerHTML = MD.render($('#f-content').value)
-    }))
-    $('#f-content').addEventListener('input', () => {
-      if ($('#preview-pane').style.display === 'block') {
-        $('#preview-pane').innerHTML = MD.render($('#f-content').value)
-      }
-    })
+    bindPreviewTabs()
   }
 
   function collectForm(isDraft) {
@@ -625,6 +617,239 @@
     } catch (e) { toast('保存失败：' + e.message, false) }
   }
 
+  // ===== 友链管理（source/_data/link.yml）=====
+  async function renderLinks() {
+    let text
+    try { text = (await API.readFile('source/_data/link.yml')).content }
+    catch (e) { return toast('读取 link.yml 失败：' + e.message, false) }
+    let data
+    try { data = jsyaml.load(text, { schema: jsyaml.CORE_SCHEMA }) || [] }
+    catch (e) { return toast('link.yml 解析失败：' + e.message, false) }
+    if (!Array.isArray(data)) data = []
+    state.links = data
+    renderLinksForm()
+  }
+
+  function renderLinksForm() {
+    const groups = (state.links || []).map((g, gi) => `
+      <div class="card link-group" data-gi="${gi}">
+        <div class="link-group-head">
+          <input class="lg-name" value="${esc(g.class_name || '')}" placeholder="分组名，如 0.推荐网站🍔">
+          <input class="lg-desc" value="${esc(g.class_desc || '')}" placeholder="分组描述">
+          <button class="btn ghost sm del" data-act="lg-del">🗑️ 删组</button>
+        </div>
+        <div class="link-items">
+          ${(g.link_list || []).map((l, li) => linkRow(gi, li, l)).join('')}
+        </div>
+        <button class="btn ghost sm" data-act="li-add" data-gi="${gi}">＋ 添加友链</button>
+      </div>`).join('')
+    $('#page-content').innerHTML = `
+      <div class="edit-head">
+        <button class="btn ghost sm" data-act="back">‹ 返回</button>
+        <span class="file-name">友链管理（source/_data/link.yml）</span>
+        <div class="spacer"></div>
+        <button class="btn ghost sm" data-act="lg-add">＋ 添加分组</button>
+        <button class="btn primary" data-act="links-save">💾 保存友链</button>
+      </div>
+      <div class="links-wrap">${groups || '<p class="empty">暂无友链，点「＋ 添加分组」开始</p>'}</div>
+      <p class="footnote">保存后写回 link.yml 并触发自动构建；名称/链接为必填，头像与站点截图可填 URL（可先用文章封面的 ⬆️ 上传得到 OSS 链接）。</p>`
+  }
+
+  function linkRow(gi, li, l) {
+    return `<div class="link-row" data-gi="${gi}" data-li="${li}">
+      <div class="lr-grid">
+        <input class="lr-name" value="${esc(l.name || '')}" placeholder="名称 *">
+        <input class="lr-link" value="${esc(l.link || '')}" placeholder="链接 *">
+        <input class="lr-avatar" value="${esc(l.avatar || '')}" placeholder="头像 URL">
+        <input class="lr-descr" value="${esc(l.descr || '')}" placeholder="描述">
+        <input class="lr-siteshot" value="${esc(l.siteshot || '')}" placeholder="站点截图 URL">
+      </div>
+      <button class="btn ghost sm del" data-act="li-del">✕ 删除</button>
+    </div>`
+  }
+
+  function collectLinks() {
+    const groups = []
+    $$('.link-group').forEach(gEl => {
+      const g = {
+        class_name: gEl.querySelector('.lg-name').value.trim(),
+        class_desc: gEl.querySelector('.lg-desc').value.trim(),
+        link_list: []
+      }
+      gEl.querySelectorAll('.link-row').forEach(r => {
+        const name = r.querySelector('.lr-name').value.trim()
+        const link = r.querySelector('.lr-link').value.trim()
+        if (!name && !link) return
+        const item = { name, link }
+        const av = r.querySelector('.lr-avatar').value.trim(); if (av) item.avatar = av
+        const de = r.querySelector('.lr-descr').value.trim(); if (de) item.descr = de
+        const ss = r.querySelector('.lr-siteshot').value.trim(); if (ss) item.siteshot = ss
+        g.link_list.push(item)
+      })
+      if (g.class_name || g.link_list.length) groups.push(g)
+    })
+    return groups
+  }
+
+  async function saveLinks() {
+    const groups = collectLinks()
+    if (!groups.length) return toast('至少保留一个分组或友链', false)
+    const text = jsyaml.dump(groups, { schema: jsyaml.CORE_SCHEMA, lineWidth: 200 })
+    try {
+      const f = await API.readFile('source/_data/link.yml')
+      await API.writeFile('source/_data/link.yml', text, 'data: update friend links', f.sha)
+      toast('✅ 友链已保存，站点 1–3 分钟内自动更新')
+      go('links')
+    } catch (e) { toast('保存失败：' + e.message, false) }
+  }
+
+  // ===== 自定义页面管理（source/box|life|personal|site|social）=====
+  async function renderPages() {
+    const tree = await API.getTree()
+    const dirs = ['box', 'life', 'personal', 'site', 'social']
+    const files = tree
+      .filter(t => t.type === 'blob' && t.path.endsWith('/index.md'))
+      .filter(t => dirs.some(d => t.path.startsWith('source/' + d + '/')))
+      .sort((a, b) => a.path.localeCompare(b.path))
+    const rows = files.map(f => {
+      const parts = f.path.split('/')
+      return `<tr>
+        <td><strong>${esc(parts[1])}</strong><span class="muted"> / ${esc(parts[2] || '')}</span></td>
+        <td class="muted small">${esc(f.path)}</td>
+        <td class="ops"><button class="btn sm ghost" data-act="page-edit" data-path="${esc(f.path)}">✏️ 编辑</button></td>
+      </tr>`
+    }).join('')
+    $('#page-content').innerHTML = `
+      <div class="edit-head">
+        <button class="btn ghost sm" data-act="back">‹ 返回</button>
+        <span class="file-name">自定义页面（source/ 下 box · life · personal · site · social）</span>
+      </div>
+      <div class="card table-card">
+        <table><thead><tr><th>模块</th><th>文件路径</th><th>操作</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="3" class="empty">未发现自定义页面</td></tr>'}</tbody></table>
+      </div>`
+  }
+
+  async function renderPageEditor() {
+    const params = new URLSearchParams(location.hash.split('?')[1] || '')
+    const path = params.get('path')
+    if (!path) return go('pages')
+    let f
+    try { f = await API.readFile(path) }
+    catch (e) { return toast('读取页面失败：' + e.message, false) }
+    const { data, content } = FM.parse(f.content)
+    const fields = Object.keys(data).map(k => {
+      const v = typeof data[k] === 'object' ? JSON.stringify(data[k]) : data[k]
+      return `<div class="field"><label>${esc(k)}</label><input class="pf-key" data-k="${esc(k)}" value="${esc(v)}"></div>`
+    }).join('')
+    $('#page-content').innerHTML = `
+      <div class="edit-head">
+        <button class="btn ghost sm" data-act="pages">‹ 返回页面列表</button>
+        <span class="file-name">${esc(path)}</span>
+        <div class="spacer"></div>
+        <button class="btn ghost sm" data-act="pf-add">＋ 字段</button>
+        <button class="btn primary" data-act="page-save" data-path="${esc(path)}">💾 保存</button>
+      </div>
+      <div class="edit-body">
+        <div class="panel card">
+          <h3>Front Matter</h3>
+          ${fields}
+          <div id="pf-extra"></div>
+          <div class="field"><label>abbrlink 等未知字段将原样保留</label></div>
+        </div>
+        <div class="editor-card card">
+          <div class="editor-tabs">
+            <button class="active" data-tab="edit">编辑 Markdown</button>
+            <button data-tab="preview">预览</button>
+          </div>
+          <textarea id="f-content" class="editor-textarea" spellcheck="false">${esc(content)}</textarea>
+          <div class="preview-pane" id="preview-pane" style="display:none"></div>
+        </div>
+      </div>`
+    bindPreviewTabs()
+  }
+
+  /** 编辑器预览切换（文章/页面共用） */
+  function bindPreviewTabs() {
+    $$('.editor-tabs button').forEach(b => b.addEventListener('click', () => {
+      $$('.editor-tabs button').forEach(x => x.classList.remove('active'))
+      b.classList.add('active')
+      const isPrev = b.dataset.tab === 'preview'
+      $('#f-content').style.display = isPrev ? 'none' : 'block'
+      $('#preview-pane').style.display = isPrev ? 'block' : 'none'
+      if (isPrev) $('#preview-pane').innerHTML = MD.render($('#f-content').value)
+    }))
+    $('#f-content').addEventListener('input', () => {
+      if ($('#preview-pane').style.display === 'block') {
+        $('#preview-pane').innerHTML = MD.render($('#f-content').value)
+      }
+    })
+  }
+
+  function parseFmValue(s) {
+    const t = s.trim()
+    if (t === 'true') return true
+    if (t === 'false') return false
+    if (/^-?\d+$/.test(t)) return parseInt(t, 10)
+    if (/^-?\d+\.\d+$/.test(t)) return parseFloat(t)
+    try { return JSON.parse(t) } catch (e) { return s }
+  }
+
+  function addPageField() {
+    const box = $('#pf-extra')
+    const div = document.createElement('div')
+    div.className = 'field'
+    div.innerHTML = `<label>新字段名</label><div class="row"><input class="pf-new-key" placeholder="如 description"><input class="pf-new-val" placeholder="值"></div>`
+    box.appendChild(div)
+  }
+
+  async function savePage(path) {
+    const data = {}
+    $$('.pf-key').forEach(inp => { data[inp.dataset.k] = parseFmValue(inp.value) })
+    $$('.pf-new-key').forEach(inp => {
+      const k = inp.value.trim()
+      if (k) data[k] = parseFmValue(inp.closest('.field').querySelector('.pf-new-val').value)
+    })
+    const content = $('#f-content').value
+    const text = FM.build(data, content)
+    try {
+      const f = await API.readFile(path)
+      await API.writeFile(path, text, 'page: update ' + path, f.sha)
+      toast('✅ 页面已保存，站点 1–3 分钟内自动更新')
+      go('pages')
+    } catch (e) { toast('保存失败：' + e.message, false) }
+  }
+
+  // ===== 侧栏组件管理（source/_data/widget.yml，文本编辑 + YAML 校验）=====
+  async function renderWidgets() {
+    let text
+    try { text = (await API.readFile('source/_data/widget.yml')).content }
+    catch (e) { return toast('读取 widget.yml 失败：' + e.message, false) }
+    $('#page-content').innerHTML = `
+      <div class="edit-head">
+        <button class="btn ghost sm" data-act="back">‹ 返回</button>
+        <span class="file-name">侧栏组件（source/_data/widget.yml）</span>
+        <div class="spacer"></div>
+        <button class="btn primary" data-act="widgets-save">💾 保存</button>
+      </div>
+      <div class="card widget-edit">
+        <textarea id="widget-text" class="widget-textarea" spellcheck="false">${esc(text)}</textarea>
+      </div>
+      <p class="footnote">⚠️ 保存前会做 YAML 语法校验，语法错误将阻止提交（避免站点构建失败）。格式说明见文件内注释：top 为所有页面显示，bottom 为 sticky 区域。</p>`
+  }
+
+  async function saveWidgets() {
+    const text = $('#widget-text').value
+    try { jsyaml.load(text, { schema: jsyaml.CORE_SCHEMA }) }
+    catch (e) { return toast('YAML 语法错误，未提交：' + e.message, false) }
+    try {
+      const f = await API.readFile('source/_data/widget.yml')
+      await API.writeFile('source/_data/widget.yml', text, 'data: update sidebar widgets', f.sha)
+      toast('✅ 侧栏组件已保存，站点 1–3 分钟内自动更新')
+      go('widgets')
+    } catch (e) { toast('保存失败：' + e.message, false) }
+  }
+
   // ===== 文章操作（发布/下线/删除） =====
   async function publishArticle(path) {
     const p = state.posts.find(x => x.path === path)
@@ -673,6 +898,36 @@
       return
     }
     if (e.target.closest('[data-act="cc-save"]')) { saveCategoryCovers(); return }
+    // 友链管理
+    if (e.target.closest('[data-act="lg-add"]')) { state.links.push({ class_name: '', class_desc: '', link_list: [] }); renderLinksForm(); return }
+    if (e.target.closest('[data-act="lg-del"]')) {
+      const gi = +e.target.closest('.link-group').dataset.gi
+      if (confirm('删除该分组及组内友链？')) { state.links.splice(gi, 1); renderLinksForm() }
+      return
+    }
+    if (e.target.closest('[data-act="li-add"]')) {
+      const gi = +e.target.closest('[data-act="li-add"]').dataset.gi
+      const g = state.links[gi]
+      if (g) { (g.link_list = g.link_list || []).push({}); renderLinksForm() }
+      return
+    }
+    if (e.target.closest('[data-act="li-del"]')) {
+      const r = e.target.closest('.link-row')
+      const gi = +r.dataset.gi, li = +r.dataset.li
+      if (confirm('删除这条友链？')) { state.links[gi].link_list.splice(li, 1); renderLinksForm() }
+      return
+    }
+    if (e.target.closest('[data-act="links-save"]')) { saveLinks(); return }
+    // 页面管理
+    if (e.target.closest('[data-act="page-edit"]')) {
+      go('page-editor?path=' + encodeURIComponent(e.target.closest('[data-act="page-edit"]').dataset.path))
+      return
+    }
+    if (e.target.closest('[data-act="page-save"]')) { savePage(e.target.closest('[data-act="page-save"]').dataset.path); return }
+    if (e.target.closest('[data-act="pages"]')) { go('pages'); return }
+    if (e.target.closest('[data-act="pf-add"]')) { addPageField(); return }
+    // 侧栏组件
+    if (e.target.closest('[data-act="widgets-save"]')) { saveWidgets(); return }
     const btn = e.target.closest('[data-act]')
     if (!btn) return
     const act = btn.dataset.act
