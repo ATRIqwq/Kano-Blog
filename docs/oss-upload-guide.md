@@ -91,6 +91,8 @@
 
 **操作路径**：Worker 页面 → **Settings** → **Variables and Secrets** → **Add**
 
+> ⚠️ **新版界面坑**：Variables 页面可能有 **Production / Preview** 两个环境页签（或"Environment Variables"区块）。**必须在 Production 下添加**，Preview 下添加线上不生效。若没有环境页签则忽略此提示。
+
 | 变量名 | 值（填你自己的） | 类型 |
 | --- | --- | --- |
 | `OSS_AK_ID` | 步骤 A 保存的 AccessKeyId | 推荐 Encrypt |
@@ -99,7 +101,7 @@
 | `OSS_REGION` | 如 `oss-cn-shanghai`（看 bucket 地域） | 普通 |
 | `OSS_DIR` | `cover`（与步骤 A 策略里的目录一致） | 普通 |
 
-逐个 Add 完成后，点 **Save**（无需重新 Deploy，变量保存后自动生效，稍等几秒）。
+逐个 Add 完成后，点 **Save**，然后**回到代码页重新 Deploy 一次**（环境变量与代码一起发布生效）。
 
 ✅ **验证**：浏览器打开 `https://oss-sign.你的子域.workers.dev/sign` → 显示 `{"error":"not found"}` 说明 Worker 在线；若显示"环境变量未配置完整"说明变量没生效（检查名称拼写）。
 

@@ -33,8 +33,11 @@ export default {
 
     if (request.method === 'POST' && url.pathname === '/sign') {
       try {
-        if (!env.OSS_AK_ID || !env.OSS_AK_SECRET || !env.OSS_BUCKET || !env.OSS_REGION || !env.OSS_DIR) {
-          return cors(json({ error: 'Worker 环境变量未配置完整（OSS_AK_ID/OSS_AK_SECRET/OSS_BUCKET/OSS_REGION/OSS_DIR）' }, 500))
+        // 精确诊断：列出缺失的环境变量（避免笼统报错）
+        const REQUIRED = ['OSS_AK_ID', 'OSS_AK_SECRET', 'OSS_BUCKET', 'OSS_REGION', 'OSS_DIR']
+        const missing = REQUIRED.filter(k => !env[k])
+        if (missing.length) {
+          return cors(json({ error: '缺少环境变量: ' + missing.join(', ') + '（请检查变量名拼写，并在 Production 环境下配置）' }, 500))
         }
         const { name } = await request.json()
         const ext = (name && name.includes('.') ? name.split('.').pop() : 'webp').toLowerCase()
