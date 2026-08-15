@@ -145,6 +145,7 @@ window.ADMIN_CONFIG = {
 
 | 现象 | 原因 | 解决 |
 | --- | --- | --- |
+| curl 测试返回 403 `SignatureDoesNotMatch` | curl 的 `-d` 会自动加 `Content-Type: application/x-www-form-urlencoded`，OSS 把它算进签名，与"无 Content-Type"的签名不匹配 | 测试时加 `-H "Content-Type:"` 移除该头，或用 `-T 文件` 方式上传；管理端 fetch 不自动加 Content-Type，不受影响 |
 | 提示"未配置 ossSignUrl" | 步骤 D 没做/没生效 | 改 `admin/js/config.js` 并重新部署 |
 | 提示"不支持的文件类型" | 选了非 jpg/png/webp/gif | 换图片格式 |
 | 上传返回 403 | CORS 没配 / 子账号没权限 | 检查步骤 B-2、步骤 A 策略中的 bucket 名与目录是否一致 |
