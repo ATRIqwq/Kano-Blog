@@ -89,6 +89,14 @@ tbody tr:hover{background:#f7faff}
 .cover-row input{flex:1}
 .cover-preview{margin-top:8px;font-size:12px;color:var(--muted);word-break:break-all}
 .cover-preview img{max-width:100%;max-height:120px;border-radius:8px;border:1px solid var(--border);display:block;margin-bottom:4px}
+/* 分类封面管理 */
+.cat-cover-panel{padding:6px 16px}
+.cat-cover-row{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid #f0f3f9}
+.cat-cover-row:last-child{border-bottom:none}
+.cat-cover-row .cover-thumb{width:84px;height:56px;border-radius:8px;object-fit:cover;border:1px solid var(--border);background:#eef2f9;flex-shrink:0}
+.cc-info{flex:1;min-width:0}
+.cc-name{font-weight:600;font-size:14px;margin-bottom:4px}
+.cc-url{width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px}
 .editor-card{display:flex;flex-direction:column;overflow:hidden}
 .editor-tabs{display:flex;border-bottom:1px solid var(--border);background:#fafcff}
 .editor-tabs button{border:none;background:none;padding:10px 22px;font-size:13px;cursor:pointer;color:var(--muted);font-weight:600;border-bottom:2px solid transparent}

@@ -338,6 +338,7 @@
       <div class="toolbar">
         <div class="search"><input id="meta-search" placeholder="搜索${label}…"></div>
         <button class="btn primary sm" data-act="meta-add" data-type="${type}">＋ 新增${label}</button>
+        ${type === 'categories' ? '<button class="btn ghost sm" data-act="cat-covers">🖼️ 分类封面</button>' : ''}
         <button class="btn ghost sm" data-act="back">‹ 返回文章列表</button>
       </div>
       <div class="card table-card">
@@ -445,46 +446,51 @@
     return new Promise(resolve => canvas.toBlob(resolve, 'image/webp', quality))
   }
 
+  /** 公共：压缩并上传图片到 OSS，返回公开 URL */
+  async function uploadToOSS(file) {
+    const cfg = window.ADMIN_CONFIG
+    if (!cfg.ossSignUrl) throw new Error('未配置 ossSignUrl（admin/js/config.js），封面上传不可用')
+    toast('🖼️ 压缩中…')
+    const blob = await compressImage(file)
+    // 步骤 1：获取签名（走 Cloudflare Worker）
+    toast('🔐 获取上传凭证…')
+    let data
+    try {
+      const res = await fetch(cfg.ossSignUrl + '/sign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: file.name, type: blob.type })
+      })
+      data = await res.json()
+      if (!res.ok || !data.uploadUrl) throw new Error(data.error || '签名失败')
+    } catch (e) {
+      throw new Error('获取签名失败：请检查 ossSignUrl 地址与网络（大陆访问 workers.dev 可能不稳定）：' + (e && e.message))
+    }
+    // 步骤 2：直传 OSS（浏览器跨域，依赖 bucket CORS 配置）
+    toast('⬆️ 上传中…')
+    let up
+    try {
+      // 上传请求的 Content-Type 必须与 Worker 签名时使用的值一致（blob.type，如 image/webp），
+      // 否则 OSS 验签返回 SignatureDoesNotMatch
+      const headers = {}
+      if (blob.type) headers['Content-Type'] = blob.type
+      up = await fetch(data.uploadUrl, { method: 'PUT', body: blob, headers })
+    } catch (e) {
+      throw new Error('OSS 直传失败：请检查 bucket 的跨域设置 CORS（操作单 B-2）：' + (e && e.message))
+    }
+    if (!up.ok) {
+      const errText = await up.text().catch(() => '')
+      throw new Error('OSS 返回 HTTP ' + up.status + '（检查 bucket 公共读与子账号权限）：' + errText.slice(0, 120))
+    }
+    return data.publicUrl
+  }
+
   async function handleCoverFile(input) {
     const file = input.files && input.files[0]
     input.value = ''
     if (!file) return
-    const cfg = window.ADMIN_CONFIG
-    if (!cfg.ossSignUrl) return toast('未配置 ossSignUrl（admin/js/config.js），封面上传不可用', false)
     try {
-      toast('🖼️ 压缩中…')
-      const blob = await compressImage(file)
-      // 步骤 1：获取签名（走 Cloudflare Worker）
-      toast('🔐 获取上传凭证…')
-      let data
-      try {
-        const res = await fetch(cfg.ossSignUrl + '/sign', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: file.name, type: blob.type })
-        })
-        data = await res.json()
-        if (!res.ok || !data.uploadUrl) throw new Error(data.error || '签名失败')
-      } catch (e) {
-        throw new Error('获取签名失败：请检查 ossSignUrl 地址与网络（大陆访问 workers.dev 可能不稳定）：' + (e && e.message))
-      }
-      // 步骤 2：直传 OSS（浏览器跨域，依赖 bucket CORS 配置）
-      toast('⬆️ 上传中…')
-      let up
-      try {
-        // 上传请求的 Content-Type 必须与 Worker 签名时使用的值一致（blob.type，如 image/webp），
-        // 否则 OSS 验签返回 SignatureDoesNotMatch
-        const headers = {}
-        if (blob.type) headers['Content-Type'] = blob.type
-        up = await fetch(data.uploadUrl, { method: 'PUT', body: blob, headers })
-      } catch (e) {
-        throw new Error('OSS 直传失败：请检查 bucket 的跨域设置 CORS（操作单 B-2）：' + (e && e.message))
-      }
-      if (!up.ok) {
-        const errText = await up.text().catch(() => '')
-        throw new Error('OSS 返回 HTTP ' + up.status + '（检查 bucket 公共读与子账号权限）：' + errText.slice(0, 120))
-      }
-      const url = data.publicUrl
+      const url = await uploadToOSS(file)
       $('#f-cover').value = url
       const pv = $('#cover-preview')
       pv.style.display = 'block'
@@ -493,6 +499,130 @@
     } catch (e) {
       toast('上传失败：' + e.message, false)
     }
+  }
+
+  // ===== 分类封面管理（首页磁贴 categoryBar，写回 _config.yml）=====
+  async function renderCategoryCovers() {
+    let cfgText
+    try {
+      const f = await API.readFile('_config.yml')
+      cfgText = f.content
+    } catch (e) {
+      return toast('读取 _config.yml 失败：' + e.message, false)
+    }
+    const items = parseCategoryBar(cfgText)
+    const seen = new Set()
+    const rows = items.map(it => {
+      seen.add(it.descr)
+      return catCoverRow(it.descr, it.cover)
+    })
+    // 补充：有文章但未配置磁贴的分类
+    Object.keys(state.catsMap).forEach(c => {
+      if (!seen.has(c)) rows.push(catCoverRow(c, ''))
+    })
+    $('#page-content').innerHTML = `
+      <div class="edit-head">
+        <button class="btn ghost sm" data-act="back">‹ 返回分类列表</button>
+        <span class="file-name">分类磁贴封面（_config.yml → categoryBar.message，显示于首页）</span>
+        <div class="spacer"></div>
+        <button class="btn primary" data-act="cc-save">💾 保存封面</button>
+      </div>
+      <div class="card cat-cover-panel">${rows.join('')}</div>
+      <p class="footnote">⬆️ 上传的图片自动压缩后存到阿里云 OSS；保存后精准写回 _config.yml（保留注释格式），1–3 分钟后站点自动更新。</p>`
+  }
+
+  function catCoverRow(descr, cover) {
+    return `<div class="cat-cover-row" data-descr="${esc(descr)}">
+      <img class="cover-thumb" src="${esc(cover || '')}" onerror="this.style.visibility='hidden'">
+      <div class="cc-info">
+        <div class="cc-name">${esc(descr)}</div>
+        <input class="cc-url" value="${esc(cover || '')}" placeholder="封面 URL（留空 = 不设置）">
+      </div>
+      <button class="btn ghost sm" data-act="cc-upload">⬆️ 上传</button>
+      <input type="file" class="cc-file" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+    </div>`
+  }
+
+  async function handleCcFile(input) {
+    const file = input.files && input.files[0]
+    input.value = ''
+    if (!file) return
+    const row = input.closest('.cat-cover-row')
+    try {
+      const url = await uploadToOSS(file)
+      row.querySelector('.cc-url').value = url
+      const img = row.querySelector('img.cover-thumb')
+      if (img) { img.src = url; img.style.visibility = 'visible' }
+      toast('✅ 封面已上传，点击「💾 保存封面」生效')
+    } catch (e) {
+      toast('上传失败：' + e.message, false)
+    }
+  }
+
+  /** 解析 _config.yml 的 categoryBar.message */
+  function parseCategoryBar(text) {
+    const lines = text.split('\n')
+    const items = []
+    let inMessage = false, msgIndent = -1, cur = null
+    for (const line of lines) {
+      const msg = line.match(/^(\s*)message:/)
+      if (msg) { inMessage = true; msgIndent = msg[1].length; cur = null; continue }
+      if (!inMessage) continue
+      const indent = (line.match(/^\s*/) || [''])[0].length
+      if (line.trim() && indent <= msgIndent && !/^\s*#/.test(line)) { inMessage = false; continue }
+      const d = line.match(/^\s*-\s*descr:\s*(.*?)\s*$/)
+      if (d) { if (cur) items.push(cur); cur = { descr: d[1], cover: '' }; continue }
+      if (cur) {
+        const c = line.match(/^\s*cover:\s*(.*?)\s*$/)
+        if (c) cur.cover = c[1]
+      }
+    }
+    if (cur) items.push(cur)
+    return items
+  }
+
+  /** 精准替换 _config.yml 中某分类的 cover 值（保留注释与其他格式） */
+  function updateCategoryCoverInYaml(text, descr, newCover) {
+    const lines = text.split('\n')
+    for (let i = 0; i < lines.length; i++) {
+      const d = lines[i].match(/^(\s*)-\s*descr:\s*(.*?)\s*$/)
+      if (d && d[2] === descr) {
+        const indent = d[1]
+        for (let j = i + 1; j < lines.length; j++) {
+          if (/^\s*-\s*descr:/.test(lines[j])) break
+          if (/^\s*cover:/.test(lines[j])) {
+            lines[j] = lines[j].replace(/^\s*cover:.*/, indent + '  cover: ' + (newCover || ''))
+            return lines.join('\n')
+          }
+        }
+        if (newCover) {
+          lines.splice(i + 1, 0, indent + '  cover: ' + newCover)
+          return lines.join('\n')
+        }
+        return text
+      }
+    }
+    return null
+  }
+
+  async function saveCategoryCovers() {
+    const updates = $$('.cat-cover-row')
+      .map(r => ({ descr: r.dataset.descr, url: r.querySelector('.cc-url').value.trim() }))
+      .filter(u => u.url)
+    if (!updates.length) return toast('没有要保存的封面（至少填一个 URL 或上传一张图）', false)
+    try {
+      const f = await API.readFile('_config.yml')
+      let text = f.content
+      let changed = false
+      updates.forEach(u => {
+        const t = updateCategoryCoverInYaml(text, u.descr, u.url)
+        if (t) { text = t; changed = true }
+      })
+      if (!changed) return toast('未找到匹配的分类，未做修改', false)
+      await API.writeFile('_config.yml', text, 'config: update category covers in categoryBar', f.sha)
+      toast('✅ 分类封面已保存，站点 1–3 分钟内自动更新')
+      go('categories')
+    } catch (e) { toast('保存失败：' + e.message, false) }
   }
 
   // ===== 文章操作（发布/下线/删除） =====
@@ -537,6 +667,12 @@
       $('#cover-file').click()
       return
     }
+    if (e.target.closest('[data-act="cat-covers"]')) { renderCategoryCovers(); return }
+    if (e.target.closest('[data-act="cc-upload"]')) {
+      e.target.closest('.cat-cover-row').querySelector('.cc-file').click()
+      return
+    }
+    if (e.target.closest('[data-act="cc-save"]')) { saveCategoryCovers(); return }
     const btn = e.target.closest('[data-act]')
     if (!btn) return
     const act = btn.dataset.act
@@ -561,7 +697,10 @@
     })
   })
   document.addEventListener('change', e => {
-    if (e.target && e.target.id === 'cover-file') handleCoverFile(e.target)
+    const t = e.target
+    if (!t || !t.files || !t.files[0]) return
+    if (t.id === 'cover-file') handleCoverFile(t)
+    else if (t.classList.contains('cc-file')) handleCcFile(t)
   })
 
   // ===== 初始化 =====
