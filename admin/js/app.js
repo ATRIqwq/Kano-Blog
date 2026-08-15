@@ -227,7 +227,15 @@
             <datalist id="cat-list">${allCats.map(c => `<option value="${esc(c)}">`).join('')}</datalist>
             <div class="field"><label>标签（逗号分隔，可新建）</label><input id="f-tags" list="tag-list" value="${esc(tagsVal)}" placeholder="如 Java, Session"></div>
             <datalist id="tag-list">${allTags.map(t => `<option value="${esc(t)}">`).join('')}</datalist>
-            <div class="field"><label>封面图 URL</label><input id="f-cover" value="${esc(d.cover || '')}"></div>
+            <div class="field">
+              <label>封面图 URL（可 ⬆️ 上传本地图：自动压缩并填入）</label>
+              <div class="cover-row">
+                <input id="f-cover" value="${esc(d.cover || '')}">
+                <button type="button" class="btn ghost sm" id="upload-cover-btn" title="上传本地图片到阿里云 OSS（需配置 ossSignUrl）">⬆️ 上传</button>
+              </div>
+              <input id="cover-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+              <div id="cover-preview" class="cover-preview" style="display:none"></div>
+            </div>
             <div class="field"><label>摘要 description</label><textarea id="f-description" rows="2">${esc(d.description || '')}</textarea></div>
             <h3>主题扩展</h3>
             <div class="row">
@@ -426,6 +434,49 @@
     } catch (e) { toast('操作失败：' + e.message, false) }
   }
 
+  // ===== 封面图上传（阿里云 OSS，前端压缩 + 直传）=====
+  async function compressImage(file, maxWidth = 1200, quality = 0.82) {
+    const bitmap = await createImageBitmap(file)
+    const scale = Math.min(1, maxWidth / bitmap.width)
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale))
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale))
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+    return new Promise(resolve => canvas.toBlob(resolve, 'image/webp', quality))
+  }
+
+  async function handleCoverFile(input) {
+    const file = input.files && input.files[0]
+    input.value = ''
+    if (!file) return
+    const cfg = window.ADMIN_CONFIG
+    if (!cfg.ossSignUrl) return toast('未配置 ossSignUrl（admin/js/config.js），封面上传不可用', false)
+    try {
+      toast('🖼️ 压缩中…')
+      const blob = await compressImage(file)
+      toast('🔐 获取上传凭证…')
+      const res = await fetch(cfg.ossSignUrl + '/sign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: file.name, type: blob.type })
+      })
+      const data = await res.json()
+      if (!res.ok || !data.uploadUrl) throw new Error(data.error || '签名失败')
+      toast('⬆️ 上传中…')
+      // 签名时 Content-Type 为空，此处不得携带 Content-Type 头
+      const up = await fetch(data.uploadUrl, { method: 'PUT', body: blob })
+      if (!up.ok) throw new Error('上传失败 HTTP ' + up.status)
+      const url = data.publicUrl
+      $('#f-cover').value = url
+      const pv = $('#cover-preview')
+      pv.style.display = 'block'
+      pv.innerHTML = `<img src="${esc(url)}" alt="封面预览"><span>已上传：${esc(url)}（原图已在前端压缩为 WebP）</span>`
+      toast('✅ 封面上传成功，已填入封面')
+    } catch (e) {
+      toast('上传失败：' + e.message, false)
+    }
+  }
+
   // ===== 文章操作（发布/下线/删除） =====
   async function publishArticle(path) {
     const p = state.posts.find(x => x.path === path)
@@ -462,6 +513,12 @@
 
   // ===== 事件委托 =====
   document.addEventListener('click', e => {
+    if (e.target.closest('#upload-cover-btn')) {
+      const cfg = window.ADMIN_CONFIG
+      if (!cfg.ossSignUrl) return toast('未配置 ossSignUrl（admin/js/config.js），封面上传不可用', false)
+      $('#cover-file').click()
+      return
+    }
     const btn = e.target.closest('[data-act]')
     if (!btn) return
     const act = btn.dataset.act
@@ -484,6 +541,9 @@
     $$('.table-card tbody tr').forEach(tr => {
       tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none'
     })
+  })
+  document.addEventListener('change', e => {
+    if (e.target && e.target.id === 'cover-file') handleCoverFile(e.target)
   })
 
   // ===== 初始化 =====

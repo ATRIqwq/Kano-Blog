@@ -70,6 +70,72 @@ git push origin main
 | 标签 / 分类 | 聚合统计（名称、文章数）、重命名、删除；均通过 Git Data API **一次 commit** 批量修改受影响文章 |
 | 归类 / 打标签 | 编辑器内直接填写分类与标签（逗号分隔，支持新建） |
 
+## 阿里云 OSS 封面上传（可选功能）
+
+编辑器封面字段支持"⬆️ 上传本地图"：浏览器端 Canvas 自动压缩（限宽 1200px、转 WebP）→ 直传阿里云 OSS → 返回链接自动填入封面。访客通过 OSS 公网链接浏览。
+
+```
+浏览器（前端压缩）→ Cloudflare Worker（签名，持有 AccessKey）→ 直传 OSS → 返回 URL 自动填封面
+```
+
+> ⚠️ 安全前提：AccessKey 只存在于 Worker 环境变量，绝不写入前端代码（否则等于公开密钥）。
+
+### A. 阿里云：创建 RAM 子账号（最小权限）
+
+1. 阿里云控制台 → RAM 访问控制 → 用户 → 创建用户（勾选"OpenAPI 调用访问"）→ 保存 AccessKeyId / AccessKeySecret
+2. 用户 → 添加权限 → 新建自定义策略，授权**只允许上传**到你的 bucket 指定目录：
+
+```json
+{
+  "Version": "1",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["oss:PutObject"],
+      "Resource": ["acs:oss:*:*:kano-img-bed/cover/*"]
+    }
+  ]
+}
+```
+
+（`kano-img-bed` 与 `cover` 换成你的 bucket 名和上传目录）
+
+### B. 阿里云：OSS bucket 配置 CORS（允许浏览器直传）
+
+bucket → 数据安全 → 跨域设置 → 创建规则：
+- 来源：`https://ATRIqwq.github.io`（或 `*`）
+- 允许 Methods：`PUT`、`GET`、`HEAD`、`POST`
+- 允许 Headers：`*`；暴露 Headers：`ETag`；缓存时间：`600`
+
+### C. Cloudflare：部署签名 Worker
+
+1. 登录 Cloudflare → Workers & Pages → Create → 粘贴 **`docs/oss-sign-worker.js`** 内容 → Deploy
+2. Settings → Variables → 添加环境变量（**加密存储**）：
+
+| 变量 | 值 |
+| --- | --- |
+| `OSS_AK_ID` | RAM 子账号 AccessKeyId |
+| `OSS_AK_SECRET` | RAM 子账号 AccessKeySecret |
+| `OSS_BUCKET` | 如 `kano-img-bed` |
+| `OSS_REGION` | 如 `oss-cn-shanghai` |
+| `OSS_DIR` | 上传目录前缀，如 `cover` |
+
+3. 记住 Worker 地址，如 `https://oss-sign.你的子域.workers.dev`
+
+### D. 管理端配置
+
+`admin/js/config.js`：
+
+```js
+ossSignUrl: 'https://oss-sign.你的子域.workers.dev'   // 留空则上传按钮不可用
+```
+
+### E. 测试
+
+编辑器 → ⬆️ 上传 → 选择图片 → 观察提示"压缩中 → 获取凭证 → 上传中 → 成功"，封面自动填入 `https://kano-img-bed.oss-cn-shanghai.aliyuncs.com/cover/时间戳-随机.webp`，预览图显示。保存文章后访客即可浏览。
+
+> 图片处理：如你的 bucket 已开通 OSS 图片处理，可在 URL 后追加 `?x-oss-process=image/resize,w_800` 实现访问时再缩放。
+
 ## 设计要点
 
 - **零后端**：管理端直接调用 GitHub REST API，无服务器依赖
