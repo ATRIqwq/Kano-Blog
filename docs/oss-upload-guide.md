@@ -99,7 +99,9 @@
 | `OSS_AK_SECRET` | 步骤 A 保存的 AccessKeySecret | 推荐 Encrypt |
 | `OSS_BUCKET` | 如 `kano-img-bed` | 普通 |
 | `OSS_REGION` | 如 `oss-cn-shanghai`（看 bucket 地域） | 普通 |
-| `OSS_DIR` | `cover`（与步骤 A 策略里的目录一致） | 普通 |
+
+> ℹ️ 上传目录已**写死在 Worker 代码**里（`OSS_DIR = 'cover'`），**无需配置环境变量**。想换目录（如 `uploads`）时，改 `docs/oss-sign-worker.js` 顶部常量，并同步修改 RAM 策略的 Resource（如 `acs:oss:*:*:kano-img-bed/uploads/*`）。
+> ⚠️ 千万不要把 RAM 策略的 Resource 字符串（如 `acs:oss:*:*:kano-img-bed/*`）填进任何环境变量——那是授权规则，不是目录名。
 
 逐个 Add 完成后，点 **Save**，然后**回到代码页重新 Deploy 一次**（环境变量与代码一起发布生效）。
 

@@ -22,6 +22,10 @@
 
 const EXPIRES = 300 // 签名有效期（秒）
 
+// 上传目录前缀（写死在代码里，避免误配环境变量）。
+// 如需改目录，只需改这里（如 'uploads'），并同步修改阿里云 RAM 策略的 Resource。
+const OSS_DIR = 'cover'
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url)
@@ -33,8 +37,8 @@ export default {
 
     if (request.method === 'POST' && url.pathname === '/sign') {
       try {
-        // 精确诊断：列出缺失的环境变量（避免笼统报错）
-        const REQUIRED = ['OSS_AK_ID', 'OSS_AK_SECRET', 'OSS_BUCKET', 'OSS_REGION', 'OSS_DIR']
+        // 只需 4 个环境变量（目录已写死在代码 OSS_DIR 常量中）
+        const REQUIRED = ['OSS_AK_ID', 'OSS_AK_SECRET', 'OSS_BUCKET', 'OSS_REGION']
         const missing = REQUIRED.filter(k => !env[k])
         if (missing.length) {
           return cors(json({ error: '缺少环境变量: ' + missing.join(', ') + '（请检查变量名拼写，并在 Production 环境下配置）' }, 500))
@@ -47,7 +51,7 @@ export default {
         }
 
         // 生成唯一对象名：cover/时间戳-随机串.ext
-        const object = `${env.OSS_DIR}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+        const object = `${OSS_DIR}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
         const expires = Math.floor(Date.now() / 1000) + EXPIRES
         const resource = `/${env.OSS_BUCKET}/${object}`
 
