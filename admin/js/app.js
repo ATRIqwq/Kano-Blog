@@ -454,18 +454,33 @@
     try {
       toast('🖼️ 压缩中…')
       const blob = await compressImage(file)
+      // 步骤 1：获取签名（走 Cloudflare Worker）
       toast('🔐 获取上传凭证…')
-      const res = await fetch(cfg.ossSignUrl + '/sign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: file.name, type: blob.type })
-      })
-      const data = await res.json()
-      if (!res.ok || !data.uploadUrl) throw new Error(data.error || '签名失败')
+      let data
+      try {
+        const res = await fetch(cfg.ossSignUrl + '/sign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: file.name, type: blob.type })
+        })
+        data = await res.json()
+        if (!res.ok || !data.uploadUrl) throw new Error(data.error || '签名失败')
+      } catch (e) {
+        throw new Error('获取签名失败：请检查 ossSignUrl 地址与网络（大陆访问 workers.dev 可能不稳定）：' + (e && e.message))
+      }
+      // 步骤 2：直传 OSS（浏览器跨域，依赖 bucket CORS 配置）
       toast('⬆️ 上传中…')
-      // 签名时 Content-Type 为空，此处不得携带 Content-Type 头
-      const up = await fetch(data.uploadUrl, { method: 'PUT', body: blob })
-      if (!up.ok) throw new Error('上传失败 HTTP ' + up.status)
+      let up
+      try {
+        // 签名时 Content-Type 为空，此处不得携带 Content-Type 头
+        up = await fetch(data.uploadUrl, { method: 'PUT', body: blob })
+      } catch (e) {
+        throw new Error('OSS 直传失败：请检查 bucket 的跨域设置 CORS（操作单 B-2）：' + (e && e.message))
+      }
+      if (!up.ok) {
+        const errText = await up.text().catch(() => '')
+        throw new Error('OSS 返回 HTTP ' + up.status + '（检查 bucket 公共读与子账号权限）：' + errText.slice(0, 120))
+      }
       const url = data.publicUrl
       $('#f-cover').value = url
       const pv = $('#cover-preview')
