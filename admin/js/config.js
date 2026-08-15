@@ -4,7 +4,7 @@
  */
 window.ADMIN_CONFIG = {
   owner: 'ATRIqwq',            // GitHub 用户名或组织
-  repo: 'hexo-blog-source',    // 源码仓库名（存放 source/ 的仓库）
+  repo: 'Kano-Blog',           // 源码仓库名（存放 source/ 的仓库）
   branch: 'main',              // 默认分支
   postsDir: 'source/_posts',   // 文章目录
   draftsDir: 'source/_drafts'  // 草稿目录
