@@ -82,10 +82,10 @@
 
 ### C-1 创建 Worker
 
-**操作路径**：dash.cloudflare.com → 左侧 **Workers & Pages** → **Create** → **Create Worker** → 名称填 `oss-sign` → **Edit code**
+**操作路径**：dash.cloudflare.com → 左侧 **Workers & Pages** → 右上角 **Create application**（新版统一入口，没有单独的 "Create Worker" 按钮）→ 在卡片中选择 **Worker**（⚠️ 不要选 Pages）→ 名称填 `oss-sign` → **Deploy** → 点击 **Edit code** 进入代码编辑器
 
 - 打开源码文件 **`docs/oss-sign-worker.js`**（在项目仓库里），全选复制全部内容
-- 粘贴覆盖 Worker 编辑器的默认代码 → 右上角 **Deploy**
+- 在 Worker 代码编辑器中全选（Ctrl+A）替换默认的 Hello World 代码，粘贴进去 → 右上角 **Deploy**（保存部署）
 
 ### C-2 配置环境变量（AccessKey 只存在这里）
 
